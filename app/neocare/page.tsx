@@ -65,6 +65,9 @@ export default function NeoCareAIPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'alerts' | 'units' | 'live'>('dashboard');
+  
+  // Get backend URL from environment variable
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
   const [selectedRegistryId, setSelectedRegistryId] = useState<string | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
 
@@ -131,7 +134,7 @@ export default function NeoCareAIPage() {
     const dataUrl = canvasRef.current.toDataURL('image/jpeg');
 
     try {
-      const response = await fetch('http://localhost:5000/process_frame', {
+      const response = await fetch(`${backendUrl}/process_frame`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: dataUrl }),
@@ -156,7 +159,7 @@ export default function NeoCareAIPage() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('http://localhost:5000/sensor_data');
+        const res = await fetch(`${backendUrl}/sensor_data`);
         const data = await res.json();
         setSensorValues(data);
       } catch (e) { }
