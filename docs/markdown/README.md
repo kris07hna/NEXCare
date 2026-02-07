@@ -10,7 +10,7 @@ A complete, production-ready Next.js application for real-time AI-powered health
 
 ### **✅ Real-Time Monitoring Dashboard**
 - Live room status monitoring (2-second auto-refresh)
-- Multi-module AI agent support (NeoCare, GeriCare, DermaCare)
+- Multi-module AI agent support (NeoCare, GeriCare)
 - Visual status indicators with color coding
 - Online/offline room detection (30-second timeout)
 - Critical alert notifications

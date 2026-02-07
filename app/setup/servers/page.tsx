@@ -9,13 +9,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Trash2, Check, Edit3, Eye, RefreshCw, Server,
-  ChevronDown, Baby, Users2, Activity
+  ChevronDown, Baby, Users2
 } from 'lucide-react';
 
 interface RoomConfig {
   id: string;
   roomName: string;
-  agentType: 'neocare' | 'gericare' | 'dermacare';
+  agentType: 'neocare' | 'gericare';
   device: string;
   deviceId: string;
 }
@@ -79,7 +79,6 @@ export default function ServerSetupPage() {
   const agentTypes = [
     { value: 'neocare', label: 'NeoCare (Infant Monitoring)', icon: <Baby className="w-5 h-5" /> },
     { value: 'gericare', label: 'GeriCare (Elderly Care)', icon: <Users2 className="w-5 h-5" /> },
-    { value: 'dermacare', label: 'DermaCare (Skin Diagnostics)', icon: <Activity className="w-5 h-5" /> },
   ];
 
   return (

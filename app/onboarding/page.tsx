@@ -9,14 +9,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, ArrowRight, Check, Edit, Eye, Wifi, Server,
-  Baby, HeartPulse, Activity, MapPin, Trash2, Plus,
+  Baby, HeartPulse, MapPin, Trash2, Plus,
   CheckCircle, PlayCircle, Shield, Zap
 } from 'lucide-react';
 
 interface RoomConfig {
   id: string;
   roomName: string;
-  agentType: 'neocare' | 'gericare' | 'dermacare';
+  agentType: 'neocare' | 'gericare';
   deviceId: string;
   edgeNode: string;
 }
@@ -50,7 +50,6 @@ export default function OnboardingPage() {
   const agentTypes = [
     { value: 'neocare', label: 'NeoCare (Infant Monitoring)', icon: <Baby className="w-5 h-5" />, color: 'pink' },
     { value: 'gericare', label: 'GeriCare (Elderly Care)', icon: <HeartPulse className="w-5 h-5" />, color: 'blue' },
-    { value: 'dermacare', label: 'DermaCare (Skin Diagnostics)', icon: <Activity className="w-5 h-5" />, color: 'purple' }
   ];
 
   const handleStartMonitoring = () => {
@@ -281,7 +280,7 @@ export default function OnboardingPage() {
                             ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400'
                             : room.agentType === 'gericare'
                             ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                            : 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300'
                         }`}>
                           {agentTypes.find(t => t.value === room.agentType)?.icon}
                         </div>

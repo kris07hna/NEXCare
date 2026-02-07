@@ -42,7 +42,7 @@ export const aiReports = sqliteTable('ai_reports', {
   status: text('status').notNull(),
   confidence: real('confidence'),
   timestamp: real('timestamp').notNull(),
-  predictions: text('predictions'), // JSON for DermaCare multi-class predictions
+  predictions: text('predictions'), // JSON for AI module predictions
   bbox: text('bbox'), // JSON [x, y, w, h]
   alertLevel: text('alert_level', { enum: ['normal', 'warning', 'critical'] }).default('normal'),
   alertCount: integer('alert_count').default(0),

@@ -92,7 +92,6 @@ export function getModuleEmoji(module: string): string {
   const emojiMap: Record<string, string> = {
     'NeoCare-AI': '👶',
     'GeriCare-AI': '👴',
-    'DermaCare-AI': '🩺',
   };
   return emojiMap[module] || '📊';
 }
