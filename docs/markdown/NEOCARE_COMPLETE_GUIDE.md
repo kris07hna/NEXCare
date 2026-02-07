@@ -14,7 +14,7 @@ The complete NeoCare dashboard now includes:
 **URL:** `http://localhost:3000/neocare/complete`
 
 **Login Credentials:**
-- **Email:** neocare@edgecare.local
+- **Email:** neocare@nexcare.local
 - **Password:** neo123
 
 Or use admin account for full access.

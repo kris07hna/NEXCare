@@ -1,4 +1,4 @@
-# EdgeCare-5G Complete Feature Documentation
+# NexCare-5G Complete Feature Documentation
 
 ## 🎉 All Features Successfully Built!
 
@@ -209,7 +209,7 @@ npm run dev
 
 #### **Complete Onboarding Flow:**
 1. **Landing Page**: `http://localhost:3000/landing`
-   - Marketing page showcasing EdgeCare-5G features
+  - Marketing page showcasing NexCare-5G features
    - Click "Launch Edge Server" or "Get Started Free"
 
 2. **Onboarding**: `http://localhost:3000/onboarding`

@@ -1,8 +1,8 @@
-# EdgeCare-5G Improvements Summary
+# NexCare-5G Improvements Summary
 
 ## Overview
 
-This document summarizes all improvements made to the EdgeCare-5G platform, transforming it from a basic proof-of-concept into a production-ready, industry-grade 5G edge healthcare monitoring system.
+This document summarizes all improvements made to the NexCare-5G platform, transforming it from a basic proof-of-concept into a production-ready, industry-grade 5G edge healthcare monitoring system.
 
 ---
 

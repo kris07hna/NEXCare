@@ -1,4 +1,4 @@
-# EdgeCare-5G: AI Healthcare Monitoring Platform
+# NexCare-5G: AI Healthcare Monitoring Platform
 
 **Industry-Grade 5G Edge Computing Healthcare Server**
 
@@ -75,7 +75,7 @@ A complete, production-ready Next.js application for real-time AI-powered health
 ## 📁 Project Structure
 
 ```
-edge-server2/
+nexcare/
 ├── app/
 │   ├── api/                      # API Routes
 │   │   ├── health/               # Server health

@@ -24,7 +24,7 @@ A doctor at Server 4 wants to do a video consultation with a patient in Server 1
 
 1. **On your mobile device:**
    - Enable mobile hotspot
-   - Set hotspot name (e.g., "EdgeCare-5G-Network")
+   - Set hotspot name (e.g., "NexCare-5G-Network")
    - Set password
    - **Note the hotspot IP range** (usually 192.168.43.x for Android)
 
@@ -239,7 +239,7 @@ http://192.168.43.103:3000  ← Should show Server 4 dashboard
 **Windows Firewall:**
 ```powershell
 # Allow port 3000
-netsh advfirewall firewall add rule name="EdgeCare Port 3000" dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="NexCare Port 3000" dir=in action=allow protocol=TCP localport=3000
 ```
 
 ### Problem: "WebRTC connection fails"

@@ -163,7 +163,7 @@ To verify everything works:
    ```
 
 5. **Login:**
-   - Email: admin@edgecare.local
+   - Email: admin@nexcare.local
    - Password: admin123
 
 6. **Watch real-time updates** on the dashboard as agents send detection reports!

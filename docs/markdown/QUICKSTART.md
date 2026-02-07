@@ -57,23 +57,23 @@ The application will be available at http://localhost:3000
 Use one of the demo accounts:
 
 **Master Control (Full Access)**
-- Email: admin@edgecare.local
+- Email: admin@nexcare.local
 - Password: admin123
 
 **Doctor**
-- Email: doctor@edgecare.local
+- Email: doctor@nexcare.local
 - Password: doctor123
 
 **NeoCare Specialist**
-- Email: neocare@edgecare.local
+- Email: neocare@nexcare.local
 - Password: neo123
 
 **GeriCare Monitor**
-- Email: gericare@edgecare.local
+- Email: gericare@nexcare.local
 - Password: geri123
 
 **Room Monitor**
-- Email: monitor@edgecare.local
+- Email: monitor@nexcare.local
 - Password: monitor123
 
 ## AI Agents (Optional)
@@ -237,7 +237,7 @@ npm run db:studio
 ## Testing the MVP
 
 ### 1. Test Dashboard
-1. Login as admin@edgecare.local
+1. Login as admin@nexcare.local
 2. View main dashboard - should show room statuses
 3. Check online/offline room indicators
 
@@ -248,21 +248,21 @@ npm run db:studio
 4. View patient profile
 
 ### 3. Test NeoCare
-1. Login as neocare@edgecare.local
+1. Login as neocare@nexcare.local
 2. Go to /neocare
 3. View infant monitoring cards
 4. Check AI confidence levels
 5. Monitor vitals (HR, SpO2)
 
 ### 4. Test GeriCare
-1. Login as gericare@edgecare.local
+1. Login as gericare@nexcare.local
 2. Go to /gericare
 3. View elderly patient tracking
 4. Check fall detection status
 5. Review activity logs
 
 ### 5. Test Video Consultations
-1. Login as doctor@edgecare.local
+1. Login as doctor@nexcare.local
 2. Go to /consultations
 3. Start a new consultation
 4. Test audio/video controls
@@ -334,4 +334,4 @@ For issues and questions, refer to the codebase documentation or create an issue
 
 ## License
 
-EdgeCare-5G MVP - Healthcare Monitoring System
+NexCare-5G MVP - Healthcare Monitoring System

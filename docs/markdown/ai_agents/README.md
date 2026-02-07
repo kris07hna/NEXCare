@@ -172,7 +172,7 @@ When you start an agent, you should see:
 3. Open http://localhost:3000 in your browser
 
 4. Login with:
-   - Email: admin@edgecare.local
+   - Email: admin@nexcare.local
    - Password: admin123
 
 5. View real-time updates on:

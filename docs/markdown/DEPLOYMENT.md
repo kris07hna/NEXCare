@@ -1,8 +1,8 @@
-# EdgeCare-5G: Complete Deployment Guide
+# NexCare-5G: Complete Deployment Guide
 
 ## 🎉 Production MVP - Industry-Grade 5G Edge Healthcare Server
 
-This guide covers deploying the fully-built EdgeCare-5G system from scratch.
+This guide covers deploying the fully-built NexCare-5G system from scratch.
 
 ---
 
@@ -77,7 +77,7 @@ This guide covers deploying the fully-built EdgeCare-5G system from scratch.
 ### **Step 1: Install Dependencies**
 
 ```bash
-cd "c:\Users\krishna\Videos\EdgeCare-5G\edge-server2"
+cd "c:\Users\krishna\Videos\NexCare-5G\edge-server2"
 npm install
 ```
 
@@ -123,7 +123,7 @@ Open your browser to `http://localhost:3000` and verify:
 
 #### **Option A: Mobile Hotspot (Recommended for Demo)**
 1. Enable mobile hotspot on your phone
-2. Set network name: `EdgeCare-5G`
+2. Set network name: `NexCare-5G`
 3. Connect all 4 laptops to the hotspot
 4. Find Edge Server IP (Laptop 4):
    ```bash
@@ -143,7 +143,7 @@ Open your browser to `http://localhost:3000` and verify:
 
 ### **Laptop 1: Edge Server (Main)**
 
-**Location:** `c:\Users\krishna\Videos\EdgeCare-5G\edge-server2`
+**Location:** `c:\Users\krishna\Videos\NexCare-5G\edge-server2`
 **IP:** `192.168.1.10` (or your actual IP)
 **Port:** `3000`
 
@@ -156,7 +156,7 @@ npm start
 
 # OR use PM2 for auto-restart
 npm install -g pm2
-pm2 start npm --name "edgecare-server" -- start
+pm2 start npm --name "nexcare-server" -- start
 pm2 save
 ```
 
@@ -169,7 +169,7 @@ pm2 save
 
 ### **Laptop 2: NeoCare-AI Agent (Room R2)**
 
-**Location:** `c:\Users\krishna\Videos\EdgeCare-5G\edge-ai-agents\neocare`
+**Location:** `c:\Users\krishna\Videos\NexCare-5G\edge-ai-agents\neocare`
 **Patient:** P001 (Baby Emma Johnson)
 
 ```bash
@@ -209,7 +209,7 @@ python neocare_agent.py --mode webcam
 
 ### **Laptop 3: GeriCare-AI Agent (Room R5)**
 
-**Location:** `c:\Users\krishna\Videos\EdgeCare-5G\edge-ai-agents\gericare`
+**Location:** `c:\Users\krishna\Videos\NexCare-5G\edge-ai-agents\gericare`
 **Patient:** P002 (Robert Smith)
 
 ```bash
@@ -230,7 +230,7 @@ python gericare_agent.py --mode webcam
 
 ### **Laptop 4: DermaCare-AI Agent (Room R3)**
 
-**Location:** `c:\Users\krishna\Videos\EdgeCare-5G\edge-ai-agents\dermacare`
+**Location:** `c:\Users\krishna\Videos\NexCare-5G\edge-ai-agents\dermacare`
 **Patient:** P003 (Jennifer Martinez)
 
 ```bash
@@ -461,8 +461,8 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Clone repo
-git clone <your-repo> /opt/edgecare
-cd /opt/edgecare/edge-server2
+git clone <your-repo> /opt/nexcare
+cd /opt/nexcare/edge-server2
 
 # Install
 npm ci --production
@@ -472,7 +472,7 @@ npm run build
 
 # Use PM2
 npm install -g pm2
-pm2 start npm --name edgecare -- start
+pm2 start npm --name nexcare -- start
 pm2 startup
 pm2 save
 
@@ -484,10 +484,10 @@ sudo apt install nginx
 ### **Option 2: Docker**
 ```dockerfile
 # Dockerfile provided in edge-server2/
-docker build -t edgecare-5g .
+docker build -t nexcare-5g .
 docker run -d -p 3000:3000 \
   -v $(pwd)/data:/app/data \
-  --name edgecare edgecare-5g
+   --name nexcare nexcare-5g
 ```
 
 ### **Option 3: Edge Deployment (Raspberry Pi 4/5)**
@@ -503,7 +503,7 @@ docker run -d -p 3000:3000 \
 ### **Server Logs**
 ```bash
 # PM2 logs
-pm2 logs edgecare-server
+pm2 logs nexcare-server
 
 # Or direct logs
 tail -f .next/server.log
@@ -579,7 +579,7 @@ SELECT * FROM ai_reports ORDER BY timestamp DESC LIMIT 10;
 
 ## 📞 Support & Contact
 
-**Repository:** `c:\Users\krishna\Videos\EdgeCare-5G\`
+**Repository:** `c:\Users\krishna\Videos\NexCare-5G\`
 
 **Key Directories:**
 - `edge-server2/` - Next.js application (this MVP)

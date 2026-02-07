@@ -17,6 +17,15 @@
 /.next/
 /out/
 
+# docs build outputs
+/docs/markdown/.next/
+/docs/markdown/node_modules/
+
+# local sqlite data
+/data/*.db
+/data/*.db-shm
+/data/*.db-wal
+
 # production
 /build
 
