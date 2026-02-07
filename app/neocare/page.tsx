@@ -10,8 +10,9 @@ import { useRouter } from 'next/navigation';
 import {
   Search, Bell, Thermometer, Droplets, Bed, Heart, Wind, Timer,
   AlertCircle, Moon, TrendingUp, ChevronRight, Activity, ShieldAlert,
-  ClipboardList, Hospital, CheckCircle2, AlertTriangle
+  ClipboardList, Hospital, CheckCircle2, AlertTriangle, Video, Camera
 } from 'lucide-react';
+import { useRef, useEffect } from 'react';
 
 interface InfantData {
   id: string;
@@ -63,9 +64,105 @@ interface ClinicalUnit {
 export default function NeoCareAIPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'alerts' | 'units'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'registry' | 'alerts' | 'units' | 'live'>('dashboard');
   const [selectedRegistryId, setSelectedRegistryId] = useState<string | null>(null);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+
+  // Live Monitoring State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<string>('Waiting for camera...');
+  const [liveColor, setLiveColor] = useState<string>('gray'); // 'gray', 'green', 'red'
+  const [sensorValues, setSensorValues] = useState<{
+    temperature: number;
+    tempStatus?: string;
+    lightStatus?: string;
+    bpm?: number;
+    status: string;
+  }>({
+    temperature: 0,
+    status: 'Connecting...',
+    bpm: 0
+  });
+
+  const startMonitoring = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setIsMonitoring(true);
+        setLiveStatus('Camera Active. Analyzing...');
+
+        // Start polling backend
+        const intervalId = setInterval(captureAndCheck, 1000); // Check every second
+        // Store interval ID to clear later if needed (simple implementation for now)
+        (window as any).monitorInterval = intervalId;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setLiveStatus('Error: Camera Access Denied');
+    }
+  };
+
+  const stopMonitoring = () => {
+    if ((window as any).monitorInterval) clearInterval((window as any).monitorInterval);
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsMonitoring(false);
+    setLiveStatus('Monitoring Stopped');
+    setLiveColor('gray');
+  };
+
+  const captureAndCheck = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const context = canvasRef.current.getContext('2d');
+    if (!context) return;
+
+    canvasRef.current.width = videoRef.current.videoWidth;
+    canvasRef.current.height = videoRef.current.videoHeight;
+    context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+
+    try {
+      const response = await fetch('http://localhost:5000/process_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const data = await response.json();
+      setLiveStatus(data.status); // "Awake", "Sleeping", "No Face Detected"
+      setLiveColor(data.color);   // "green", "red", "gray"
+    } catch (error) {
+      console.error("Backend Error:", error);
+      setLiveStatus("Backend Disconnected (Run python app.py)");
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if ((window as any).monitorInterval) clearInterval((window as any).monitorInterval);
+    };
+  }, []);
+
+  // Poll sensors even if camera is off (optional, but good for testing)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('http://localhost:5000/sensor_data');
+        const data = await res.json();
+        setSensorValues(data);
+      } catch (e) { }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const infants: InfantData[] = [
     {
@@ -243,20 +340,20 @@ export default function NeoCareAIPage() {
 
   const filteredRegistry = normalizedQuery
     ? registryPatients.filter((patient) =>
-        matchesQuery(patient.name) ||
-        matchesQuery(patient.id) ||
-        matchesQuery(patient.bedNumber) ||
-        matchesQuery(`bed ${patient.bedNumber}`)
-      )
+      matchesQuery(patient.name) ||
+      matchesQuery(patient.id) ||
+      matchesQuery(patient.bedNumber) ||
+      matchesQuery(`bed ${patient.bedNumber}`)
+    )
     : registryPatients;
 
   const filteredAlerts = normalizedQuery
     ? alerts.filter((alert) =>
-        matchesQuery(alert.patientName) ||
-        matchesQuery(alert.bedNumber) ||
-        matchesQuery(`bed ${alert.bedNumber}`) ||
-        matchesQuery(alert.description)
-      )
+      matchesQuery(alert.patientName) ||
+      matchesQuery(alert.bedNumber) ||
+      matchesQuery(`bed ${alert.bedNumber}`) ||
+      matchesQuery(alert.description)
+    )
     : alerts;
 
   const filteredUnits = normalizedQuery
@@ -299,11 +396,10 @@ export default function NeoCareAIPage() {
               label="Registry"
             />
             <button
-              className={`text-sm font-semibold transition-colors flex items-center gap-1.5 border-b-2 pb-1 ${
-                activeTab === 'alerts'
-                  ? 'text-purple-600 border-purple-600'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 border-transparent'
-              }`}
+              className={`text-sm font-semibold transition-colors flex items-center gap-1.5 border-b-2 pb-1 ${activeTab === 'alerts'
+                ? 'text-purple-600 border-purple-600'
+                : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 border-transparent'
+                }`}
               onClick={() => setActiveTab('alerts')}
             >
               Critical Alerts
@@ -315,6 +411,11 @@ export default function NeoCareAIPage() {
               isActive={activeTab === 'units'}
               onClick={() => setActiveTab('units')}
               label="Clinical Units"
+            />
+            <TabButton
+              isActive={activeTab === 'live'}
+              onClick={() => setActiveTab('live')}
+              label="Live Monitor (AI)"
             />
           </nav>
         </div>
@@ -430,11 +531,10 @@ export default function NeoCareAIPage() {
                   filteredRegistry.map((patient) => (
                     <button
                       key={patient.id}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${
-                        selectedRegistry?.id === patient.id
-                          ? 'border-purple-600/40 bg-purple-50 dark:bg-purple-900/20'
-                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-600/30'
-                      }`}
+                      className={`w-full text-left p-4 rounded-xl border transition-all ${selectedRegistry?.id === patient.id
+                        ? 'border-purple-600/40 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-600/30'
+                        }`}
                       onClick={() => setSelectedRegistryId(patient.id)}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -519,11 +619,10 @@ export default function NeoCareAIPage() {
                   filteredAlerts.map((alert) => (
                     <div
                       key={alert.id}
-                      className={`p-5 rounded-2xl border shadow-sm bg-white dark:bg-slate-900 transition-all ${
-                        alert.acknowledged
-                          ? 'border-slate-200 dark:border-slate-800'
-                          : 'border-red-200 dark:border-red-900/40'
-                      }`}
+                      className={`p-5 rounded-2xl border shadow-sm bg-white dark:bg-slate-900 transition-all ${alert.acknowledged
+                        ? 'border-slate-200 dark:border-slate-800'
+                        : 'border-red-200 dark:border-red-900/40'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -542,11 +641,10 @@ export default function NeoCareAIPage() {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <button
-                            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${
-                              alert.acknowledged
-                                ? 'border-emerald-500/40 text-emerald-500'
-                                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-purple-600/40'
-                            }`}
+                            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors ${alert.acknowledged
+                              ? 'border-emerald-500/40 text-emerald-500'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-purple-600/40'
+                              }`}
                             onClick={() =>
                               setAlerts((prev) =>
                                 prev.map((item) =>
@@ -611,11 +709,10 @@ export default function NeoCareAIPage() {
                   filteredUnits.map((unit) => (
                     <button
                       key={unit.id}
-                      className={`w-full text-left p-4 rounded-xl border transition-all ${
-                        selectedUnit?.id === unit.id
-                          ? 'border-purple-600/40 bg-purple-50 dark:bg-purple-900/20'
-                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-600/30'
-                      }`}
+                      className={`w-full text-left p-4 rounded-xl border transition-all ${selectedUnit?.id === unit.id
+                        ? 'border-purple-600/40 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-600/30'
+                        }`}
                       onClick={() => setSelectedUnitId(unit.id)}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -679,6 +776,120 @@ export default function NeoCareAIPage() {
             </div>
           </div>
         )}
+
+        {activeTab === 'live' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <SectionHeader
+                icon={<Video className="w-5 h-5" />}
+                title="Real-Time AI Monitor"
+                subtitle="Connect your local camera for instant sleep analysis testing"
+              />
+
+              <div className="bg-slate-900 rounded-2xl overflow-hidden aspect-video relative border-4 border-slate-200 dark:border-slate-800 shadow-xl">
+                {/* Video Stream */}
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  playsInline
+                  muted
+                />
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Status Overlay */}
+                <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${isMonitoring ? 'bg-red-500 animate-pulse' : 'bg-slate-500'}`}></div>
+                  {isMonitoring ? 'LIVE' : 'OFFLINE'}
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                {!isMonitoring ? (
+                  <button
+                    onClick={startMonitoring}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-5 h-5" /> Start Camera
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopMonitoring}
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-3 px-6 rounded-xl transition-colors"
+                  >
+                    Stop Camera
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className={`p-8 rounded-3xl border-2 transition-all duration-500 flex flex-col items-center justify-center text-center h-full min-h-[300px] ${liveStatus === 'Awake' ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' :
+                liveStatus === 'Sleeping' ? 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800' :
+                  'bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700'
+                }`}>
+
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 transition-all duration-500 ${liveStatus === 'Awake' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-800 dark:text-emerald-200' :
+                  liveStatus === 'Sleeping' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800 dark:text-rose-200' :
+                    'bg-slate-200 text-slate-400 dark:bg-slate-700'
+                  }`}>
+                  {liveStatus === 'Awake' ? <Activity className="w-12 h-12" /> :
+                    liveStatus === 'Sleeping' ? <Moon className="w-12 h-12" /> :
+                      <Video className="w-12 h-12" />}
+                </div>
+
+                <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2 font-display">
+                  {liveStatus}
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                  NeoCare AI is analyzing visual data points to determine infant state in real-time.
+                </p>
+
+                {isMonitoring && (
+                  <div className="mt-8 w-full max-w-xs bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 text-left">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Temperature */}
+                      <div className={`p-3 rounded-lg border ${sensorValues.tempStatus === 'Low' ? 'bg-blue-50 border-blue-200 text-blue-700' :
+                        sensorValues.tempStatus === 'Moderate' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                          sensorValues.tempStatus === 'High' ? 'bg-red-50 border-red-200 text-red-700' :
+                            'bg-slate-50 dark:bg-slate-800 border-transparent dark:text-white'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold opacity-70">Temp ({sensorValues.tempStatus || '--'})</span>
+                        <div className="text-xl font-bold flex items-center gap-1">
+                          <Thermometer className="w-4 h-4" />
+                          {typeof sensorValues.temperature === 'number' ? Number(sensorValues.temperature).toFixed(1) : '--'}°C
+                        </div>
+                      </div>
+
+                      {/* Light Status */}
+                      <div className={`p-3 rounded-lg border ${sensorValues.lightStatus === 'ON' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                        'bg-slate-50 dark:bg-slate-800 border-transparent dark:text-gray-300'
+                        }`}>
+                        <span className="text-[10px] uppercase font-bold opacity-70">Light</span>
+                        <div className="text-xl font-bold flex items-center gap-1">
+                          <Moon className="w-4 h-4" />
+                          {sensorValues.lightStatus || '--'}
+                        </div>
+                      </div>
+
+                      {/* Heart Rate */}
+                      <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg col-span-2">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Heart Rate</span>
+                        <div className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-1">
+                          <Heart className="w-4 h-4 text-red-500 animate-pulse" />
+                          {typeof sensorValues.bpm === 'number' ? Number(sensorValues.bpm).toFixed(0) : '--'} BPM
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-[10px] text-slate-400 text-center">
+                      Sensor Status: {sensorValues.status || 'Checking...'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -687,11 +898,10 @@ export default function NeoCareAIPage() {
 function TabButton({ isActive, onClick, label }: { isActive: boolean; onClick: () => void; label: string }) {
   return (
     <button
-      className={`text-sm font-semibold transition-colors border-b-2 pb-1 ${
-        isActive
-          ? 'text-purple-600 border-purple-600'
-          : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 border-transparent'
-      }`}
+      className={`text-sm font-semibold transition-colors border-b-2 pb-1 ${isActive
+        ? 'text-purple-600 border-purple-600'
+        : 'text-slate-500 dark:text-slate-400 hover:text-purple-600 border-transparent'
+        }`}
       onClick={onClick}
     >
       {label}
@@ -813,9 +1023,8 @@ function InfantCard({ infant }: { infant: InfantData }) {
 
   return (
     <div
-      className={`bg-white dark:bg-slate-900 rounded-xl p-6 border shadow-sm hover:border-purple-600/30 transition-all group relative overflow-hidden ${
-        isCritical ? 'border-2 border-purple-600/40 shadow-xl shadow-purple-600/5' : 'border-slate-200 dark:border-slate-800'
-      }`}
+      className={`bg-white dark:bg-slate-900 rounded-xl p-6 border shadow-sm hover:border-purple-600/30 transition-all group relative overflow-hidden ${isCritical ? 'border-2 border-purple-600/40 shadow-xl shadow-purple-600/5' : 'border-slate-200 dark:border-slate-800'
+        }`}
     >
       {isCritical && (
         <div className="absolute top-2 right-2">

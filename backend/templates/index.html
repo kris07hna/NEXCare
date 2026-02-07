@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoCare Baby Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --secondary: #10B981;
+            --background: #F3F4F6;
+            --surface: #FFFFFF;
+            --text-primary: #1F2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .status-display {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #E0E7FF;
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .status-display.awake {
+            background-color: #D1FAE5; /* Green-100 */
+            color: #065F46; /* Green-800 */
+        }
+
+        .status-display.sleeping {
+            background-color: #FEE2E2; /* Red-100 */
+            color: #991B1B; /* Red-800 */
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #E5E7EB;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #4338CA;
+        }
+
+        canvas {
+            display: none; /* Hidden canvas for capturing frames */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NeoCare Monitor</h1>
+        <div id="status" class="status-display">Waiting for camera...</div>
+        <video id="video" autoplay playsinline></video>
+        <button id="startBtn">Start Monitoring</button>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const statusElement = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        let monitoring = false;
+
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                statusElement.textContent = "Camera Ready - Click Start to Monitor";
+            } catch (error) {
+                console.error("Error accessing webcam:", error);
+                statusElement.textContent = "Error Accessing Camera";
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (!monitoring) {
+                monitoring = true;
+                startBtn.textContent = "Stop Monitoring";
+                setInterval(captureAndSendFrame, 1000); // Check every second
+            } else {
+                monitoring = false;
+                startBtn.textContent = "Start Monitoring";
+                statusElement.textContent = "Monitoring Stopped";
+            }
+        });
+
+        function captureAndSendFrame() {
+            if (!monitoring) return;
+
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg');
+
+            fetch('/process_frame', { // Send to Flask backend
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ image: dataUrl }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                const status = data.status;
+                const statusText = `Status: ${status}`;
+                statusElement.textContent = statusText;
+
+                // Update class for styling
+                statusElement.classList.remove('awake', 'sleeping');
+                if (status === 'Awake') {
+                    statusElement.classList.add('awake');
+                } else if (status === 'Sleeping') {
+                    statusElement.classList.add('sleeping');
+                }
+            })
+            .catch(error => {
+                console.error("Error sending frame:", error);
+                statusElement.textContent = "Error Processing Frame";
+            });
+        }
+
+        setupCamera();
+    </script>
+</body>
+</html>
