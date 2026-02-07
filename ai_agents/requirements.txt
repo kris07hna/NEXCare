@@ -1,0 +1,21 @@
+# EdgeCare-5G Python AI Agents Requirements
+# Production-grade dependencies
+
+# Core dependencies
+numpy>=1.24.0
+opencv-python>=4.8.0
+requests>=2.31.0
+
+# Deep Learning (Optional - comment out if not using GPU)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# YOLO Object Detection
+ultralytics>=8.0.0
+
+# Tracking (Optional)
+# deep-sort-realtime>=1.3.2
+
+# Utilities
+python-dotenv>=1.0.0
+Pillow>=10.0.0
