@@ -19,7 +19,7 @@ sensor_data = {"temperature": 0, "tempStatus": "Checking", "lightStatus": "Wait"
 def setup_serial():
     global serial_port
     # List possible Windows COM ports to try
-    ports = ['COM6', 'COM3', 'COM4', 'COM5'] 
+    ports = ['COM7', 'COM6', 'COM3', 'COM4', 'COM5'] 
     for port in ports:
         try:
             print(f"Trying to connect to Arduino on {port}...")

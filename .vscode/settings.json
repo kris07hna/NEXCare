@@ -29,5 +29,6 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "never"
     }
-  }
+  },
+  "python-envs.defaultEnvManager": "ms-python.python:venv"
 }

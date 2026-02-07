@@ -32,6 +32,7 @@ export default function ConsultationsPage() {
         body: JSON.stringify({
           room_id: roomId,
           patient_id: patientId,
+          doctor_id: 'doctor-web',
           doctor_name: 'Dr. Smith',
           status: 'active',
         }),

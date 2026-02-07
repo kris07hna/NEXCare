@@ -4,6 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/database';
+import { createSignalSchema } from '@/lib/validation';
 
 // In-memory storage for signaling (simple MVP approach)
 const pendingOffers = new Map<string, any>();
@@ -13,29 +15,50 @@ const iceCandidates = new Map<string, any[]>();
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { type, from, to, signal } = data;
+    const isLegacyPayload = 'type' in data && 'from' in data && 'to' in data && 'signal' in data;
 
-    console.log(`[WebRTC Signal] ${type} from ${from} to ${to}`);
+    if (isLegacyPayload) {
+      const { type, from, to, signal } = data;
+      console.log(`[WebRTC Signal] ${type} from ${from} to ${to} (legacy)`);
 
-    switch (type) {
-      case 'offer':
-        pendingOffers.set(to, { from, signal, timestamp: Date.now() });
-        return NextResponse.json({ success: true, message: 'Offer stored' });
+      switch (type) {
+        case 'offer':
+          pendingOffers.set(to, { from, signal, timestamp: Date.now() });
+          return NextResponse.json({ success: true, message: 'Offer stored' });
 
-      case 'answer':
-        pendingAnswers.set(to, { from, signal, timestamp: Date.now() });
-        return NextResponse.json({ success: true, message: 'Answer stored' });
+        case 'answer':
+          pendingAnswers.set(to, { from, signal, timestamp: Date.now() });
+          return NextResponse.json({ success: true, message: 'Answer stored' });
 
-      case 'ice-candidate':
-        if (!iceCandidates.has(to)) {
-          iceCandidates.set(to, []);
-        }
-        iceCandidates.get(to)!.push({ from, candidate: signal });
-        return NextResponse.json({ success: true, message: 'ICE candidate stored' });
+        case 'ice-candidate':
+          if (!iceCandidates.has(to)) {
+            iceCandidates.set(to, []);
+          }
+          iceCandidates.get(to)!.push({ from, candidate: signal });
+          return NextResponse.json({ success: true, message: 'ICE candidate stored' });
 
-      default:
-        return NextResponse.json({ success: false, error: 'Invalid type' }, { status: 400 });
+        default:
+          return NextResponse.json({ success: false, error: 'Invalid type' }, { status: 400 });
+      }
     }
+
+    const validated = createSignalSchema.parse(data);
+    await db.initialize();
+
+    const signal = await db.createSignal({
+      sessionId: validated.session_id,
+      fromPeer: validated.from_peer,
+      toPeer: validated.to_peer,
+      signalType: validated.signal_type,
+      signalData: JSON.stringify(validated.signal_data),
+      delivered: false,
+    });
+
+    console.log(
+      `[WebRTC Signal] ${validated.signal_type} from ${validated.from_peer} to ${validated.to_peer}`
+    );
+
+    return NextResponse.json({ success: true, signal_id: signal.signalId });
   } catch (error) {
     console.error('[WebRTC Signal] Error:', error);
     return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });

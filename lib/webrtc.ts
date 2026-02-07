@@ -6,21 +6,27 @@
 import type { ConnectionState, WebRTCConfig } from '@/types';
 
 export class WebRTCService {
-  private peerConnection: RTCPeerConnection | null = null;
+  protected peerConnection: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   protected sessionId: string;
   protected peerId: string;
   protected remotePeerId: string;
+  protected signalBaseUrl: string;
   protected signalPollingInterval: NodeJS.Timeout | null = null;
   private connectionState: ConnectionState = 'idle';
   private onStateChange?: (state: ConnectionState) => void;
   private onRemoteStream?: (stream: MediaStream) => void;
 
-  constructor(sessionId: string, peerId: string, remotePeerId: string) {
+  constructor(sessionId: string, peerId: string, remotePeerId: string, signalBaseUrl?: string) {
     this.sessionId = sessionId;
     this.peerId = peerId;
     this.remotePeerId = remotePeerId;
+    this.signalBaseUrl = signalBaseUrl?.replace(/\/$/, '') || '';
+  }
+
+  private buildSignalUrl(path: string): string {
+    return `${this.signalBaseUrl}${path}`;
   }
 
   /**
@@ -227,7 +233,7 @@ export class WebRTCService {
     signalData: any
   ): Promise<void> {
     try {
-      const response = await fetch('/api/webrtc/signal', {
+      const response = await fetch(this.buildSignalUrl('/api/webrtc/signal'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -262,7 +268,7 @@ export class WebRTCService {
 
     this.signalPollingInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/webrtc/signal/${this.peerId}`);
+        const response = await fetch(this.buildSignalUrl(`/api/webrtc/signal/${this.peerId}`));
 
         if (!response.ok) {
           throw new Error(`Polling failed: ${response.status}`);
@@ -320,6 +326,13 @@ export class WebRTCService {
       this.signalPollingInterval = null;
       console.log('[WebRTC] Signal polling stopped');
     }
+  }
+
+  /**
+   * Start listening for incoming offers and ICE candidates
+   */
+  startListening(): void {
+    this.startSignalPolling();
   }
 
   /**

@@ -225,3 +225,31 @@ export interface RoomRegistryEntry {
 }
 
 export type RoomRegistry = Map<string, RoomRegistryEntry>;
+
+// ============================================================================
+// File Transfer Types (WebRTC Data Channel)
+// ============================================================================
+
+export interface FileTransferProgress {
+  fileName: string;
+  fileSize: number;
+  bytesTransferred: number;
+  progress: number; // 0-100
+  status: 'sending' | 'receiving' | 'completed' | 'failed';
+  error?: string;
+  chunksSent?: number;
+  chunksReceived?: number;
+  totalChunks?: number;
+}
+
+export interface FileTransferOptions {
+  onProgress?: (progress: FileTransferProgress) => void;
+  onComplete?: () => void;
+  onError?: (error: Error) => void;
+}
+
+export interface ReceivedFile {
+  file: File;
+  receivedAt: Date;
+  sender: string;
+}

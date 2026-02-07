@@ -85,6 +85,7 @@ flowchart TB
 - Offline-first edge monitoring with local persistence.
 - Dual-domain AI workflow (neonatal and geriatric) under one platform.
 - Integrated WebRTC consultations without external cloud dependencies.
+- **P2P file transfer with unlimited size using WebRTC data channels** (no server storage, end-to-end encrypted).
 - Structured AI reporting pipeline with validation and alerting.
 
 ## Present Work
@@ -94,6 +95,7 @@ flowchart TB
 - Room monitoring and diagnostics pages
 - Patient registry with CRUD workflows
 - WebRTC consultation sessions and signaling
+- **WebRTC data channel for unlimited P2P file transfers** (zero server storage)
 - API validation with Zod and typed models
 - Drizzle ORM schema for core entities
 
@@ -103,15 +105,83 @@ Prerequisites:
 - Node.js 18+
 - npm or pnpm
 
-Install and run:
+### Local Development (Single Laptop):
 
 ```bash
 npm install
 npx tsx scripts/seed.ts
-npm run dev
+npm run dev:local
 ```
 
 App runs at: http://localhost:3000
+
+### Multi-Device Setup (Mobile Hotspot):
+
+**🚀 EASIEST METHOD - Double-click:**  
+```
+SETUP-NETWORK.bat
+```
+This automatically detects your IP and configures everything!
+
+**📖 Documentation:**
+- **Step-by-Step Guide**: [docs/MOBILE_HOTSPOT_CONNECTION_GUIDE.md](docs/MOBILE_HOTSPOT_CONNECTION_GUIDE.md) ⭐ **START HERE**
+- **Quick Reference Card**: [docs/QUICK-REFERENCE.md](docs/QUICK-REFERENCE.md) (Print this!)
+- **Network Diagrams**: [docs/NETWORK_TOPOLOGY.md](docs/NETWORK_TOPOLOGY.md)
+
+**Manual Setup:**
+```powershell
+# 1. Find your IP
+ipconfig | findstr IPv4
+
+# 2. Start server
+npm run dev
+
+# 3. On other laptops, access at:
+http://YOUR-IP:3000  # e.g., http://10.107.51.10:3000
+```
+
+**Automated Setup (Mac/Linux):**
+```bash
+chmod +x setup-hotspot.sh
+./setup-hotspot.sh
+npm run build
+npm start
+```
+
+App runs at: http://YOUR-IP:3000 (e.g., http://192.168.43.10:3000)
+
+## WebRTC Multi-Device Setup
+
+### Automated Setup (Recommended):
+
+**On Central Server (Laptop 1):**
+```powershell
+.\setup-hotspot.ps1
+npm start
+```
+
+**On AI Agent Laptops (2-3):**
+```powershell
+cd ai_agents
+.\setup-agent.ps1
+# Follow prompts to configure
+```
+
+**On Browser Laptops (4-5):**
+- Open: `http://<SERVER-IP>:3000`
+- Login with role-based credentials
+
+### Manual Setup:
+
+1. **Enable Mobile Hotspot**: SSID: `NEXCARE-5G`, Password: `nexcare2026`
+2. **Connect all laptops** to the same hotspot
+3. **Find Server IP**: Run `ipconfig | findstr IPv4` on server laptop
+4. **Configure .env.local**: Set `NEXT_PUBLIC_SIGNALING_SERVER_URL=http://<IP>:3000`
+5. **Start Server**: `npm start` (listens on 0.0.0.0:3000)
+6. **Start Consultation**: Doctor clicks "Start Consultation"
+7. **Join from Room**: Open `/room-call/<sessionId>` on room monitor laptop
+
+**Detailed Instructions**: See [docs/MOBILE_HOTSPOT_SETUP.md](docs/MOBILE_HOTSPOT_SETUP.md)
 
 ## Key Routes
 

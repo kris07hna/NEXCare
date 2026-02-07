@@ -14,6 +14,7 @@ interface UseWebRTCOptions {
   peerId: string;
   remotePeerId: string;
   isCaller: boolean;
+  signalBaseUrl?: string;
 }
 
 interface UseWebRTCReturn {
@@ -35,6 +36,7 @@ export function useWebRTC({
   peerId,
   remotePeerId,
   isCaller,
+  signalBaseUrl,
 }: UseWebRTCOptions): UseWebRTCReturn {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -51,7 +53,12 @@ export function useWebRTC({
 
   // Initialize WebRTC service
   useEffect(() => {
-    webrtcServiceRef.current = new WebRTCService(sessionId, peerId, remotePeerId);
+    webrtcServiceRef.current = new WebRTCService(
+      sessionId,
+      peerId,
+      remotePeerId,
+      signalBaseUrl
+    );
 
     // Set up callbacks
     webrtcServiceRef.current.onConnectionStateChange((state) => {
@@ -100,7 +107,7 @@ export function useWebRTC({
       }
       // If receiver, start polling for offer
       else {
-        // Polling is handled automatically by WebRTCService
+        webrtcServiceRef.current.startListening();
       }
     } catch (err) {
       console.error('[useWebRTC] Error starting call:', err);
@@ -109,7 +116,7 @@ export function useWebRTC({
       );
       setConnectionState('failed');
     }
-  }, [isCaller]);
+  }, [isCaller, signalBaseUrl]);
 
   /**
    * Toggle audio on/off

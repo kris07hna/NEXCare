@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Trash2, Check, Edit3, Eye, RefreshCw, Server,
-  ChevronDown, Baby, Users2
+  ChevronDown, Baby, Users2, Activity
 } from 'lucide-react';
 
 interface RoomConfig {

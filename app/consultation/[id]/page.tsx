@@ -1,7 +1,9 @@
 /**
  * EdgeCare-5G Live Consultation Interface
  * Premium full-screen video call with AI insights and real-time vitals
- */'use client';
+ */
+
+'use client';
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -27,6 +29,9 @@ export default function ConsultationPage({ params }: PageProps) {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
+  const [roomPeerId, setRoomPeerId] = useState<string | null>(null);
+  const doctorPeerId = `doctor-${sessionId}`;
+  const signalBaseUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || '';
 
   const {
     localStream,
@@ -40,9 +45,10 @@ export default function ConsultationPage({ params }: PageProps) {
     startCall,
   } = useWebRTC({
     sessionId,
-    peerId: 'doctor-web',
-    remotePeerId: 'room-agent',
+    peerId: doctorPeerId,
+    remotePeerId: roomPeerId || 'room-unknown',
     isCaller: true,
+    signalBaseUrl,
   });
 
   useEffect(() => {
@@ -52,6 +58,9 @@ export default function ConsultationPage({ params }: PageProps) {
         if (!response.ok) throw new Error('Failed to load consultation');
         const data = await response.json();
         setConsultation(data.consultation);
+        if (data.consultation.roomId) {
+          setRoomPeerId(`room-${data.consultation.roomId}`);
+        }
 
         if (data.consultation.patientId) {
           const patientResponse = await fetch(`/api/patients/${data.consultation.patientId}`);
@@ -77,8 +86,8 @@ export default function ConsultationPage({ params }: PageProps) {
   }, [connectionState]);
 
   useEffect(() => {
-    if (!loading && consultation) startCall();
-  }, [loading, consultation, startCall]);
+    if (!loading && consultation && roomPeerId) startCall();
+  }, [loading, consultation, roomPeerId, startCall]);
 
   const handleHangUp = async () => {
     hangUp();
@@ -288,6 +297,12 @@ export default function ConsultationPage({ params }: PageProps) {
               <h2 className="text-2xl font-bold">{patient?.fullName || 'Patient'}</h2>
               <p className="text-sm opacity-90">{patient?.age ? `${patient.age} y.o.` : ''} • {patient?.roomId || 'Room N/A'}</p>
             </div>
+
+            {consultation?.roomId && (
+              <div className="absolute bottom-6 right-6 bg-slate-900/70 text-white px-4 py-2 rounded-xl text-xs shadow-lg border border-white/10">
+                Room join link: /room-call/{sessionId}
+              </div>
+            )}
 
             {/* Control Bar */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/70 backdrop-blur-md px-4 py-3 rounded-3xl shadow-2xl border border-white/20 flex items-center gap-4">

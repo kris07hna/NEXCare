@@ -14,7 +14,7 @@ import {
   Activity, Users, Bed, Shield, Search, Bell, Settings,
   Sun, Moon, Grid3X3, MonitorCheck, UserCircle, BarChart3,
   Video, AlertCircle, Clock, TrendingUp, Eye, Baby, HeartPulse,
-  Calendar, Stethoscope, Server
+  Calendar, Stethoscope, Server, FileDown
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -159,6 +159,7 @@ export default function DashboardPage() {
           <NavLink icon={<HeartPulse className="w-5 h-5" />} label="GeriCare" onClick={() => router.push('/gericare')} />
           <NavLink icon={<Stethoscope className="w-5 h-5" />} label="Diagnostics" onClick={() => router.push('/diagnostics')} />
           <NavLink icon={<Calendar className="w-5 h-5" />} label="Staff Schedule" onClick={() => router.push('/schedule')} />
+          <NavLink icon={<FileDown className="w-5 h-5" />} label="File Transfer" onClick={() => router.push('/file-transfer')} />
         </nav>
         <div className="mt-auto pt-6 space-y-2 border-t border-slate-200 dark:border-slate-800">
           <NavLink icon={<Settings className="w-5 h-5" />} label="Settings" onClick={() => router.push('/setup/servers')} />
