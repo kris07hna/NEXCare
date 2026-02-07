@@ -1,59 +1,83 @@
 /**
- * WebRTC Signaling API Route
- * POST /api/webrtc/signal - Create new WebRTC signal (offer/answer/ICE candidate)
- * GET /api/webrtc/signal/[peerId] - Get pending signals for a peer (polling)
+ * WebRTC Signaling Server
+ * Handles offer/answer exchange and ICE candidate exchange
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/database';
-import { createSignalSchema } from '@/lib/validation';
-import { ZodError } from 'zod';
+
+// In-memory storage for signaling (simple MVP approach)
+const pendingOffers = new Map<string, any>();
+const pendingAnswers = new Map<string, any>();
+const iceCandidates = new Map<string, any[]>();
 
 export async function POST(request: NextRequest) {
   try {
-    await db.initialize();
+    const data = await request.json();
+    const { type, from, to, signal } = data;
 
-    const body = await request.json();
-    const validatedData = createSignalSchema.parse(body);
+    console.log(`[WebRTC Signal] ${type} from ${from} to ${to}`);
 
-    const signal = await db.createSignal({
-      sessionId: validatedData.session_id,
-      fromPeer: validatedData.from_peer,
-      toPeer: validatedData.to_peer,
-      signalType: validatedData.signal_type,
-      signalData: JSON.stringify(validatedData.signal_data),
-    });
+    switch (type) {
+      case 'offer':
+        pendingOffers.set(to, { from, signal, timestamp: Date.now() });
+        return NextResponse.json({ success: true, message: 'Offer stored' });
 
-    console.log(
-      `[API /webrtc/signal POST] ✓ Signal created: ${validatedData.signal_type} from ${validatedData.from_peer} to ${validatedData.to_peer}`
-    );
+      case 'answer':
+        pendingAnswers.set(to, { from, signal, timestamp: Date.now() });
+        return NextResponse.json({ success: true, message: 'Answer stored' });
 
-    return NextResponse.json(
-      {
-        success: true,
-        signal_id: signal.signalId,
-      },
-      { status: 201 }
-    );
+      case 'ice-candidate':
+        if (!iceCandidates.has(to)) {
+          iceCandidates.set(to, []);
+        }
+        iceCandidates.get(to)!.push({ from, candidate: signal });
+        return NextResponse.json({ success: true, message: 'ICE candidate stored' });
+
+      default:
+        return NextResponse.json({ success: false, error: 'Invalid type' }, { status: 400 });
+    }
   } catch (error) {
-    console.error('[API /webrtc/signal POST] Error:', error);
+    console.error('[WebRTC Signal] Error:', error);
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
+  }
+}
 
-    if (error instanceof ZodError) {
-      return NextResponse.json(
-        {
-          error: 'Validation failed',
-          details: error.issues,
-        },
-        { status: 400 }
-      );
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const type = searchParams.get('type') || 'offer';
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'userId required' }, { status: 400 });
     }
 
-    return NextResponse.json(
-      {
-        error: 'Failed to create signal',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    if (type === 'offer') {
+      const offer = pendingOffers.get(userId);
+      if (offer) {
+        return NextResponse.json({ hasOffer: true, offer });
+      }
+      return NextResponse.json({ hasOffer: false });
+    }
+
+    if (type === 'answer') {
+      const answer = pendingAnswers.get(userId);
+      if (answer) {
+        pendingAnswers.delete(userId);
+        return NextResponse.json({ hasAnswer: true, answer });
+      }
+      return NextResponse.json({ hasAnswer: false });
+    }
+
+    if (type === 'ice') {
+      const candidates = iceCandidates.get(userId) || [];
+      iceCandidates.delete(userId);
+      return NextResponse.json({ hasCandidates: candidates.length > 0, candidates });
+    }
+
+    return NextResponse.json({ success: false, error: 'Invalid type' }, { status: 400 });
+  } catch (error) {
+    console.error('[WebRTC Signal] Error:', error);
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }
