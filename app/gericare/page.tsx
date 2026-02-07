@@ -33,6 +33,9 @@ interface RecentExit {
 export default function GeriCareAIPage() {
   const router = useRouter();
   const [showCriticalAlert, setShowCriticalAlert] = useState(true);
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'sensors' | 'logs'>('dashboard');
+  const [emergencyCallInProgress, setEmergencyCallInProgress] = useState(false);
 
   const rooms: RoomData[] = [
     {
@@ -89,6 +92,16 @@ export default function GeriCareAIPage() {
       severity: 'info',
     },
   ];
+
+  const handleEmergencyCall = () => {
+    setEmergencyCallInProgress(true);
+    // Simulate emergency call
+    setTimeout(() => {
+      alert('Emergency services have been notified! Response team dispatched to Room 302.');
+      setEmergencyCallInProgress(false);
+      setShowEmergencyDialog(false);
+    }, 2000);
+  };
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -147,9 +160,24 @@ export default function GeriCareAIPage() {
         <aside className="w-64 flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
           <div className="space-y-1 mb-6">
             <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Monitoring</p>
-            <SidebarButton icon={<Grid3X3 className="w-5 h-5" />} label="Dashboard" active />
-            <SidebarButton icon={<Radio className="w-5 h-5" />} label="Sensor Status" />
-            <SidebarButton icon={<History className="w-5 h-5" />} label="Activity Logs" />
+            <SidebarButton
+              icon={<Grid3X3 className="w-5 h-5" />}
+              label="Dashboard"
+              active={currentView === 'dashboard'}
+              onClick={() => setCurrentView('dashboard')}
+            />
+            <SidebarButton
+              icon={<Radio className="w-5 h-5" />}
+              label="Sensor Status"
+              active={currentView === 'sensors'}
+              onClick={() => setCurrentView('sensors')}
+            />
+            <SidebarButton
+              icon={<History className="w-5 h-5" />}
+              label="Activity Logs"
+              active={currentView === 'logs'}
+              onClick={() => setCurrentView('logs')}
+            />
           </div>
 
           <div className="space-y-1">
@@ -197,7 +225,10 @@ export default function GeriCareAIPage() {
           </div>
 
           <div className="mt-auto pt-4">
-            <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-red-700 transition-colors">
+            <button
+              onClick={() => setShowEmergencyDialog(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-red-700 transition-colors"
+            >
               <Send className="w-5 h-5" />
               EMERGENCY CALL
             </button>
@@ -246,62 +277,127 @@ export default function GeriCareAIPage() {
             </section>
           )}
 
-          {/* Room Grid */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Bed className="w-5 h-5 text-blue-600" />
-                Active Room Monitoring
-              </h3>
-              <div className="flex gap-2">
-                <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-blue-500"></span> Movement
-                </span>
-                <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-slate-300"></span> Still
-                </span>
+          {/* Dashboard View */}
+          {currentView === 'dashboard' && (
+            <>
+              {/* Room Grid */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Bed className="w-5 h-5 text-blue-600" />
+                    Active Room Monitoring
+                  </h3>
+                  <div className="flex gap-2">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-blue-500"></span> Movement
+                    </span>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-slate-300"></span> Still
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {rooms.map((room) => (
+                    <RoomCard key={room.id} room={room} />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {rooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </div>
-          </div>
 
-          {/* Stats Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard
-              icon={<Shield className="w-6 h-6" />}
-              label="Fall Prevention Rate"
-              value="98.7%"
-              trend="+2.3%"
-              color="emerald"
-            />
-            <StatCard
-              icon={<Clock className="w-6 h-6" />}
-              label="Avg Response Time"
-              value="47s"
-              trend="-12s"
-              color="blue"
-            />
-            <StatCard
-              icon={<Users className="w-6 h-6" />}
-              label="Monitored Patients"
-              value="24"
-              trend="+3"
-              color="purple"
-            />
-          </div>
+              {/* Stats Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard
+                  icon={<Shield className="w-6 h-6" />}
+                  label="Fall Prevention Rate"
+                  value="98.7%"
+                  trend="+2.3%"
+                  color="emerald"
+                />
+                <StatCard
+                  icon={<Clock className="w-6 h-6" />}
+                  label="Avg Response Time"
+                  value="47s"
+                  trend="-12s"
+                  color="blue"
+                />
+                <StatCard
+                  icon={<Users className="w-6 h-6" />}
+                  label="Monitored Patients"
+                  value="24"
+                  trend="+3"
+                  color="purple"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Sensor Status View */}
+          {currentView === 'sensors' && <SensorStatusView />}
+
+          {/* Activity Logs View */}
+          {currentView === 'logs' && <ActivityLogsView />}
         </main>
       </div>
+
+      {/* Emergency Call Dialog */}
+      {showEmergencyDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border-2 border-red-600">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white">
+                <Phone className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Emergency Call</h3>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-6">
+              This will immediately alert the emergency response team and on-duty staff. Are you sure you want to proceed?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleEmergencyCall}
+                disabled={emergencyCallInProgress}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {emergencyCallInProgress ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Calling...
+                  </>
+                ) : (
+                  <>
+                    <Phone className="w-4 h-4" />
+                    Call Now
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowEmergencyDialog(false)}
+                disabled={emergencyCallInProgress}
+                className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 px-6 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SidebarButton({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function SidebarButton({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
+      onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
         active
           ? 'bg-blue-600/10 text-blue-600'
@@ -311,6 +407,240 @@ function SidebarButton({ icon, label, active }: { icon: React.ReactNode; label: 
       {icon}
       {label}
     </button>
+  );
+}
+
+function SensorStatusView() {
+  const sensors = [
+    { id: 'A1', room: '101', status: 'online', battery: 87, lastUpdate: '2s ago' },
+    { id: 'A2', room: '302', status: 'online', battery: 45, lastUpdate: '1s ago' },
+    { id: 'B1', room: '105', status: 'online', battery: 92, lastUpdate: '3s ago' },
+    { id: 'B2', room: '204', status: 'offline', battery: 0, lastUpdate: '15m ago' },
+    { id: 'C1', room: '108', status: 'online', battery: 78, lastUpdate: '1s ago' },
+    { id: 'C2', room: '205', status: 'online', battery: 61, lastUpdate: '2s ago' },
+  ];
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Sensor Status</h3>
+        <p className="text-slate-600 dark:text-slate-400">Real-time monitoring of all fall detection sensors</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sensors.map((sensor) => (
+          <div
+            key={sensor.id}
+            className={`bg-white dark:bg-slate-900 rounded-xl p-5 border-2 ${
+              sensor.status === 'online'
+                ? 'border-green-200 dark:border-green-900/30'
+                : 'border-red-200 dark:border-red-900/30'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    sensor.status === 'online'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                  }`}
+                >
+                  <Radio className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white">Sensor {sensor.id}</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Room {sensor.room}</p>
+                </div>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  sensor.status === 'online'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                }`}
+              >
+                {sensor.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-600 dark:text-slate-400">Battery</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{sensor.battery}%</span>
+                </div>
+                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${
+                      sensor.battery > 50
+                        ? 'bg-green-500'
+                        : sensor.battery > 20
+                        ? 'bg-orange-500'
+                        : 'bg-red-500'
+                    }`}
+                    style={{ width: `${sensor.battery}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600 dark:text-slate-400">Last Update</span>
+                <span className="font-semibold text-slate-900 dark:text-white">{sensor.lastUpdate}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActivityLogsView() {
+  type LogSeverity = 'critical' | 'warning' | 'info';
+
+  interface ActivityLog {
+    id: number;
+    timestamp: string;
+    room: string;
+    patient: string;
+    event: string;
+    severity: LogSeverity;
+  }
+
+  const logs: ActivityLog[] = [
+    {
+      id: 1,
+      timestamp: '2024-02-07 14:23:45',
+      room: '302',
+      patient: 'Martha Jenkins',
+      event: 'Fall Detected',
+      severity: 'critical',
+    },
+    {
+      id: 2,
+      timestamp: '2024-02-07 14:21:30',
+      room: '204',
+      patient: 'Sam Wilson',
+      event: 'Bed Exit Detected',
+      severity: 'warning',
+    },
+    {
+      id: 3,
+      timestamp: '2024-02-07 14:18:12',
+      room: '105',
+      patient: 'Alice Smith',
+      event: 'Movement Detected',
+      severity: 'info',
+    },
+    {
+      id: 4,
+      timestamp: '2024-02-07 14:15:05',
+      room: '101',
+      patient: 'John Doe',
+      event: 'Normal Activity',
+      severity: 'info',
+    },
+    {
+      id: 5,
+      timestamp: '2024-02-07 14:10:22',
+      room: '302',
+      patient: 'Martha Jenkins',
+      event: 'Bathroom Trip Started',
+      severity: 'warning',
+    },
+    {
+      id: 6,
+      timestamp: '2024-02-07 14:05:18',
+      room: '204',
+      patient: 'Sam Wilson',
+      event: 'Returned to Bed',
+      severity: 'info',
+    },
+  ];
+
+  const severityConfig: Record<LogSeverity, { bg: string; border: string; text: string; badge: string }> = {
+    critical: {
+      bg: 'bg-red-50 dark:bg-red-900/10',
+      border: 'border-red-200 dark:border-red-900/30',
+      text: 'text-red-700 dark:text-red-400',
+      badge: 'bg-red-600 text-white',
+    },
+    warning: {
+      bg: 'bg-orange-50 dark:bg-orange-900/10',
+      border: 'border-orange-200 dark:border-orange-900/30',
+      text: 'text-orange-700 dark:text-orange-400',
+      badge: 'bg-orange-600 text-white',
+    },
+    info: {
+      bg: 'bg-blue-50 dark:bg-blue-900/10',
+      border: 'border-blue-200 dark:border-blue-900/30',
+      text: 'text-blue-700 dark:text-blue-400',
+      badge: 'bg-blue-600 text-white',
+    },
+  };
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Activity Logs</h3>
+        <p className="text-slate-600 dark:text-slate-400">Recent patient activity and system events</p>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Timestamp
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Room
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Patient
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Event
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Severity
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              {logs.map((log) => (
+                <tr
+                  key={log.id}
+                  className={`${severityConfig[log.severity].bg} hover:bg-opacity-80 transition-colors`}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                    {log.timestamp}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">
+                    {log.room}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
+                    {log.patient}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                    {log.event}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${severityConfig[log.severity].badge}`}
+                    >
+                      {log.severity.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 

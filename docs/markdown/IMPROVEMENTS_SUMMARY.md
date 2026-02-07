@@ -8,20 +8,7 @@ This document summarizes all improvements made to the NexCare-5G platform, trans
 
 ## 🎯 Key Improvements
 
-### 1. ✅ Removed DermaCare AI Module
-
-**Changes:**
-- Removed `DermaCare-AI` from AI module enum in database schema
-- Updated seed data to use only `NeoCare-AI` and `GeriCare-AI`
-- Replaced DermaCare patient with elderly care patient (Margaret Wilson)
-
-**Rationale:**
-- Simplified system to focus on core use cases (neonatal + geriatric care)
-- Created dedicated Consultations tab for doctor-to-room video calls
-
----
-
-### 2. 🎥 Created Professional Consultations Page
+### 1. 🎥 Created Professional Consultations Page
 
 **Features:**
 - Grid layout showing all available rooms across all servers
@@ -41,7 +28,7 @@ This document summarizes all improvements made to the NexCare-5G platform, trans
 
 ---
 
-###3. 🤖 Production-Grade Python AI Agents
+### 2. 🤖 Production-Grade Python AI Agents
 
 **Created 3 new Python files:**
 
@@ -102,7 +89,7 @@ Production dependencies:
 
 ---
 
-### 4. 🌐 Cross-Server WebRTC via Mobile Hotspot
+### 3. 🌐 Cross-Server WebRTC via Mobile Hotspot
 
 **Created Files:**
 
@@ -160,7 +147,7 @@ Server 4 (Doctor):    192.168.43.103:3000
 
 ---
 
-### 5. 🎨 Professional UI/UX Design System
+### 4. 🎨 Professional UI/UX Design System
 
 **Installed Packages:**
 - `framer-motion` (^11.0.0) - Smooth animations
@@ -217,7 +204,7 @@ toast.error("Failed to connect. Please try again.");
 
 ---
 
-### 6. 📊 Analytics Dashboard
+### 5. 📊 Analytics Dashboard
 
 **Created:** `app/analytics/page.tsx` (400+ lines)
 
@@ -290,11 +277,10 @@ toast.error("Failed to connect. Please try again.");
 ### Modified Files (5 files)
 
 1. `drizzle/schema.ts`
-   - Removed 'DermaCare-AI' from module enum
+   - Updated AI module enum for core use cases
 
 2. `scripts/seed.ts`
-   - Replaced DermaCare patient with elderly care patient
-   - Updated sample reports to remove DermaCare data
+   - Updated sample patients and reports to align with core modules
 
 3. `package.json`
    - Added framer-motion, recharts, sonner

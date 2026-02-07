@@ -6,7 +6,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { RoomCard } from '@/components/dashboard/RoomCard';
 import { useRooms } from '@/hooks/useRooms';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -21,6 +21,42 @@ export default function DashboardPage() {
   const router = useRouter();
   const { rooms, loading, error, onlineCount, offlineCount, refetch } = useRooms(2000);
   const [filterView, setFilterView] = useState<'all' | 'critical'>('all');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showDoctorMenu, setShowDoctorMenu] = useState(false);
+
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const doctorMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (doctorMenuRef.current && !doctorMenuRef.current.contains(event.target as Node)) {
+        setShowDoctorMenu(false);
+      }
+    };
+
+    if (showNotifications || showDoctorMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showNotifications, showDoctorMenu]);
+
+  const toggleNotifications = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowNotifications((prev) => !prev);
+    setShowDoctorMenu(false);
+  };
+
+  const toggleDoctorMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDoctorMenu((prev) => !prev);
+    setShowNotifications(false);
+  };
 
   const handleStartConsultation = async (roomId: string, patientId: string | null) => {
     if (!patientId) {
@@ -138,7 +174,7 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-white/20 dark:border-slate-800/20 px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-[100] bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-white/20 dark:border-slate-800/20 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="md:hidden w-8 h-8 flex items-center justify-center border border-blue-600 rounded-full">
               <Activity className="w-5 h-5 text-blue-600" />
@@ -150,7 +186,7 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 relative z-[101]">
             <div className="relative">
               <input
                 className="pl-12 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl w-64 focus:ring-2 focus:ring-blue-600 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
@@ -159,16 +195,141 @@ export default function DashboardPage() {
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
-            <button className="relative p-2.5 bg-white dark:bg-slate-800 shadow-sm rounded-xl hover:scale-105 transition-transform">
-              <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
-            </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">Dr. Sarah Chen</p>
-                <p className="text-xs text-slate-500">Chief Officer</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 ring-2 ring-blue-600 ring-offset-2 ring-offset-white dark:ring-offset-slate-900"></div>
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={toggleNotifications}
+                className="relative p-2.5 bg-white dark:bg-slate-800 shadow-sm rounded-xl hover:scale-105 transition-transform"
+              >
+                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[9999]"
+                >
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Notifications</h3>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowNotifications(false);
+                        }}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    <NotificationItem
+                      type="critical"
+                      title="Fall Alert - Room 5"
+                      message="AI detected potential fall for Arthur Miller"
+                      time="2 mins ago"
+                    />
+                    <NotificationItem
+                      type="warning"
+                      title="Vitals Alert - Room 12"
+                      message="Heart rate elevated for Elena Vance"
+                      time="15 mins ago"
+                    />
+                    <NotificationItem
+                      type="info"
+                      title="Consultation Scheduled"
+                      message="Dr. Smith with Patient #8821 at 2:00 PM"
+                      time="1 hour ago"
+                    />
+                  </div>
+                  <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full py-2 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                    >
+                      View All Notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="relative" ref={doctorMenuRef}>
+              <button
+                onClick={toggleDoctorMenu}
+                className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700 hover:opacity-80 transition-opacity"
+              >
+                <div className="text-right">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Dr. Sarah Chen</p>
+                  <p className="text-xs text-slate-500">Chief Officer</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 ring-2 ring-blue-600 ring-offset-2 ring-offset-white dark:ring-offset-slate-900"></div>
+              </button>
+
+              {/* Doctor Menu Dropdown */}
+              {showDoctorMenu && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[9999]"
+                >
+                  <div className="p-4">
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500"></div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Dr. Sarah Chen</p>
+                        <p className="text-xs text-slate-500">Chief Officer</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDoctorMenu(false);
+                          router.push('/physician-hub');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <UserCircle className="w-4 h-4 inline mr-2" />
+                        My Profile
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDoctorMenu(false);
+                          router.push('/schedule');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <Calendar className="w-4 h-4 inline mr-2" />
+                        My Schedule
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDoctorMenu(false);
+                          router.push('/setup/servers');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 inline mr-2" />
+                        Settings
+                      </button>
+                      <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDoctorMenu(false);
+                          router.push('/login');
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium text-red-600 transition-colors"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -498,6 +659,38 @@ function ActivityItem({ type, icon, title, description, detail, time, color, act
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function NotificationItem({ type, title, message, time }: {
+  type: 'critical' | 'warning' | 'info';
+  title: string;
+  message: string;
+  time: string;
+}) {
+  const typeStyles = {
+    critical: 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500',
+    warning: 'bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500',
+    info: 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500',
+  };
+
+  const iconStyles = {
+    critical: 'text-red-500',
+    warning: 'text-orange-500',
+    info: 'text-blue-500',
+  };
+
+  return (
+    <div className={`p-4 border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer ${typeStyles[type]}`}>
+      <div className="flex items-start gap-3">
+        <AlertCircle className={`w-5 h-5 mt-0.5 ${iconStyles[type]}`} />
+        <div className="flex-1">
+          <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{title}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">{message}</p>
+          <p className="text-xs text-slate-400">{time}</p>
+        </div>
       </div>
     </div>
   );

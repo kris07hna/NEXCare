@@ -68,7 +68,7 @@ This guide covers deploying the fully-built NexCare-5G system from scratch.
 
 ### **AI Agent Requirements** (Already exist in your project)
 - Python 3.9+
-- OpenCV, YOLOv8, TensorFlow (for the 3 AI agents)
+- OpenCV, YOLOv8, TensorFlow (for the AI agents)
 
 ---
 
@@ -93,10 +93,9 @@ npx tsx scripts/seed.ts
 
 This will:
 - Create all database tables (patients, ai_reports, consultations, webrtc_signals, logs)
-- Insert 3 sample patients:
+- Insert 2 sample patients:
   - **P001** - Baby Emma Johnson (Room R2, NeoCare-AI)
   - **P002** - Robert Smith (Room R5, GeriCare-AI, fall risk)
-  - **P003** - Jennifer Martinez (Room R3, DermaCare-AI, dermatology)
 - Create sample AI reports for testing
 
 ### **Step 3: Start Development Server**
@@ -117,14 +116,14 @@ Open your browser to `http://localhost:3000` and verify:
 
 ---
 
-## 🏥 Full System Deployment (4-Laptop Demo Setup)
+## 🏥 Full System Deployment (3-Laptop Demo Setup)
 
 ### **Network Setup**
 
 #### **Option A: Mobile Hotspot (Recommended for Demo)**
 1. Enable mobile hotspot on your phone
 2. Set network name: `NexCare-5G`
-3. Connect all 4 laptops to the hotspot
+3. Connect all 3 laptops to the hotspot
 4. Find Edge Server IP (Laptop 4):
    ```bash
    # Windows
@@ -136,7 +135,7 @@ Open your browser to `http://localhost:3000` and verify:
 5. Note down the IP (e.g., `192.168.43.XXX`)
 
 #### **Option B: Local WiFi Network**
-1. Connect all 4 laptops to same WiFi
+1. Connect all 3 laptops to same WiFi
 2. Use static IP for edge server (recommended)
 
 ---
@@ -228,42 +227,21 @@ python gericare_agent.py --mode webcam
 
 ---
 
-### **Laptop 4: DermaCare-AI Agent (Room R3)**
-
-**Location:** `c:\Users\krishna\Videos\NexCare-5G\edge-ai-agents\dermacare`
-**Patient:** P003 (Jennifer Martinez)
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-
-# Edit .env
-EDGE_SERVER_URL=http://192.168.1.10:3000
-ROOM_ID=R3
-PATIENT_ID=P003
-
-# Run
-python dermacare_agent.py --mode webcam
-```
-
----
-
 ## 🎬 Demo Flow (5-Minute Presentation)
 
 ### **Minute 1: System Overview**
 1. Open dashboard: `http://192.168.1.10:3000`
 2. Show stats cards:
-   - Total Rooms: 3
-   - Online: 3 (all green)
+   - Total Rooms: 2
+   - Online: 2 (all green)
    - Critical Alerts: 0
 3. Explain architecture: "100% offline, edge AI, no cloud dependency"
 
 ### **Minute 2: Real-Time Monitoring**
-1. Show 3 room cards (R2, R5, R3)
+1. Show 2 room cards (R2, R5)
 2. Point out real-time updates (green dot + 2-second polling)
 3. Show patient names on each card
-4. Explain AI modules (NeoCare, GeriCare, DermaCare)
+4. Explain AI modules (NeoCare, GeriCare)
 
 ### **Minute 3: Fall Detection Demo**
 1. Go to GeriCare laptop (Laptop 3)
@@ -293,7 +271,7 @@ python dermacare_agent.py --mode webcam
 5. Point out recent AI reports section
 6. **Wrap-up:** Key differentiators:
    - 100% offline operation
-   - 3 AI agents (most demos have 1)
+   - 2 AI agents (most demos have 1)
    - Real P2P WebRTC
    - Production-ready code
 
@@ -539,7 +517,7 @@ SELECT * FROM ai_reports ORDER BY timestamp DESC LIMIT 10;
 - [ ] All dependencies installed
 - [ ] Database initialized with seed data
 - [ ] Server builds successfully (`npm run build`)
-- [ ] All 3 AI agents tested individually
+- [ ] All AI agents tested individually
 - [ ] Network connectivity verified (all laptops ping each other)
 - [ ] Dashboard accessible from all laptops
 - [ ] WebRTC works between 2 laptops
@@ -583,7 +561,7 @@ SELECT * FROM ai_reports ORDER BY timestamp DESC LIMIT 10;
 
 **Key Directories:**
 - `edge-server2/` - Next.js application (this MVP)
-- `edge-ai-agents/` - Python AI agents (neocare, gericare, dermacare)
+- `edge-ai-agents/` - Python AI agents (neocare, gericare)
 - `reference/` - Original documentation
 
 **Issues:** Check logs in:
