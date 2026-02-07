@@ -1,224 +1,212 @@
 """
-NeoCare-AI Agent - Baby Monitoring with YOLO
-Production-grade AI agent for neonatal activity monitoring
+NeoCare AI Agent - Connects to Central Server
+Monitors baby sleep state and vital signs, sends data to edge server
 """
 
 import cv2
+import mediapipe as mp
 import numpy as np
-from typing import Optional, Any
-from base_agent import BaseAIAgent, AgentConfig, DetectionResult
-import torch
+import requests
+import json
+import time
+import serial
+import threading
+from datetime import datetime
+from dotenv import load_dotenv
+import os
 
+# Load configuration
+load_dotenv()
 
-class NeoCareAgent(BaseAIAgent):
-    """AI Agent for neonatal care monitoring"""
+EDGE_SERVER_URL = os.getenv('EDGE_SERVER_URL', 'http://10.107.51.130:3000')
+ROOM_ID = os.getenv('ROOM_ID', 'R2')
+PATIENT_ID = os.getenv('PATIENT_ID', 'P001')
+MODULE = os.getenv('MODULE', 'NeoCare-AI')
 
-    def __init__(self, config: AgentConfig):
-        super().__init__(config)
-        self.model = None
-        self.classes = [
-            'SLEEPING', 'AWAKE', 'CRYING', 'FEEDING',
-            'RESTLESS', 'FACE_COVERED', 'ABNORMAL_POSITION'
-        ]
-        self.critical_statuses = ['CRYING', 'FACE_COVERED', 'ABNORMAL_POSITION']
-        self.warning_statuses = ['RESTLESS']
+print(f"==================================================")
+print(f"         NeoCare AI Agent - Starting              ")
+print(f"==================================================")
+print(f"Server:     {EDGE_SERVER_URL}")
+print(f"Room:       {ROOM_ID}")
+print(f"Patient:    {PATIENT_ID}")
+print(f"Module:     {MODULE}")
+print()
 
-    def initialize_model(self):
-        """Load YOLO model for baby activity detection"""
+# --- ARDUINO SERIAL SETUP ---
+serial_port = None
+sensor_data = {
+    "temperature": 0,
+    "tempStatus": "Checking",
+    "lightStatus": "Wait",
+    "bpm": 0,
+    "status": "Disconnected"
+}
+
+def setup_serial():
+    global serial_port
+    ports = ['COM6', 'COM7', 'COM3', 'COM4', 'COM5']
+    for port in ports:
         try:
-            self.logger.info("Loading YOLOv8 model for baby monitoring...")
+            print(f"Trying Arduino on {port}...")
+            serial_port = serial.Serial(port, 9600, timeout=1)
+            print(f"[OK] Connected to Arduino on {port}!")
+            return
+        except serial.SerialException:
+            pass
+    print("[WARNING] Arduino not found. Using simulated sensor data.")
 
-            # Try to load YOLO model (you'll need to install ultralytics)
+def read_serial_loop():
+    global sensor_data
+    setup_serial()
+    while True:
+        if serial_port and serial_port.is_open:
             try:
-                from ultralytics import YOLO
-                self.model = YOLO('yolov8n-pose.pt')  # Pose estimation model
-                self.logger.info("✅ YOLOv8 pose model loaded successfully")
-            except ImportError:
-                self.logger.warning("YOLOv8 not available. Using mock detection for demo.")
-                self.model = None
-
-        except Exception as e:
-            self.logger.error(f"Failed to load model: {str(e)}")
-            raise e
-
-    def process_frame(self, frame: Any) -> DetectionResult:
-        """Process video frame and detect baby activity"""
-        try:
-            if frame is None or frame.size == 0:
-                return DetectionResult(
-                    status='NO_FRAME',
-                    confidence=0.0,
-                    predictions={},
-                    alert_level='warning'
-                )
-
-            if self.model is not None:
-                # Real YOLO detection
-                results = self.model(frame, verbose=False)
-
-                # Extract pose keypoints
-                if len(results) > 0 and results[0].keypoints is not None:
-                    keypoints = results[0].keypoints.data
-                    status, confidence = self.analyze_baby_pose(keypoints)
-                else:
-                    status = 'NO_DETECTION'
-                    confidence = 0.0
-            else:
-                # Mock detection for demo/testing
-                status, confidence = self.mock_detection()
-
-            # Determine alert level
-            alert_level = self.determine_alert_level(status, confidence)
-
-            # Get bounding box if detected
-            bbox = self.get_bounding_box(frame) if status != 'NO_DETECTION' else None
-
-            return DetectionResult(
-                status=status,
-                confidence=confidence,
-                predictions={'primary_activity': status},
-                bbox=bbox,
-                alert_level=alert_level,
-                metadata={
-                    'frame_shape': frame.shape if hasattr(frame, 'shape') else None,
-                    'model_type': 'YOLOv8-pose' if self.model else 'mock'
-                }
-            )
-
-        except Exception as e:
-            self.logger.error(f"Error processing frame: {str(e)}")
-            return DetectionResult(
-                status='ERROR',
-                confidence=0.0,
-                predictions={},
-                alert_level='critical'
-            )
-
-    def analyze_baby_pose(self, keypoints) -> tuple[str, float]:
-        """Analyze baby pose from keypoints"""
-        # This is a simplified analysis - in production you'd have more sophisticated logic
-        if keypoints is None or len(keypoints) == 0:
-            return 'NO_DETECTION', 0.0
-
-        # Example logic (simplified):
-        # - Check if face is covered (head keypoints confidence low)
-        # - Check body position
-        # - Detect movement patterns
-
-        # For now, return mock result
-        return self.mock_detection()
-
-    def mock_detection(self) -> tuple[str, float]:
-        """Mock detection for testing without real camera"""
-        import random
-
-        # Simulate realistic baby monitoring
-        statuses_weighted = [
-            ('SLEEPING', 0.7),
-            ('AWAKE', 0.15),
-            ('RESTLESS', 0.1),
-            ('CRYING', 0.03),
-            ('FEEDING', 0.01),
-            ('FACE_COVERED', 0.005),
-            ('ABNORMAL_POSITION', 0.005),
-        ]
-
-        status = random.choices(
-            [s[0] for s in statuses_weighted],
-            weights=[s[1] for s in statuses_weighted]
-        )[0]
-
-        confidence = random.uniform(0.75, 0.98)
-
-        return status, confidence
-
-    def determine_alert_level(self, status: str, confidence: float) -> str:
-        """Determine alert level based on detected status"""
-        if status in self.critical_statuses and confidence > self.config.confidence_threshold:
-            return 'critical'
-        elif status in self.warning_statuses and confidence > self.config.confidence_threshold:
-            return 'warning'
-        else:
-            return 'normal'
-
-    def get_bounding_box(self, frame) -> list:
-        """Get bounding box for detected baby"""
-        # Mock bounding box - in production, this would come from YOLO
-        if hasattr(frame, 'shape'):
-            h, w = frame.shape[:2]
-            # Center-focused bounding box
-            return [
-                int(w * 0.3),
-                int(h * 0.2),
-                int(w * 0.4),
-                int(h * 0.6)
-            ]
-        return [100, 100, 200, 300]
-
-    def get_frame(self) -> Optional[Any]:
-        """Get frame from camera or video source"""
-        # For now, create a mock frame
-        # In production, you would:
-        # 1. Connect to RTSP stream
-        # 2. Read from USB camera
-        # 3. Pull from video file
-
-        if self.config.camera_url:
-            # Try to read from camera
-            try:
-                if not hasattr(self, 'video_capture'):
-                    self.video_capture = cv2.VideoCapture(self.config.camera_url)
-
-                ret, frame = self.video_capture.read()
-                if ret:
-                    return frame
+                line = serial_port.readline().decode('utf-8', errors='ignore').strip()
+                if line and line.startswith('{'):
+                    try:
+                        data = json.loads(line)
+                        sensor_data.update(data)
+                        sensor_data["status"] = "Connected"
+                    except json.JSONDecodeError:
+                        pass
             except Exception as e:
-                self.logger.error(f"Error reading from camera: {str(e)}")
+                print(f"Serial error: {e}")
+                time.sleep(2)
+                setup_serial()
+        else:
+            time.sleep(2)
+            setup_serial()
+        time.sleep(0.01)
 
-        # Return mock frame for testing
-        return np.zeros((480, 640, 3), dtype=np.uint8)
+# Start serial thread
+serial_thread = threading.Thread(target=read_serial_loop, daemon=True)
+serial_thread.start()
 
+# --- MEDIAPIPE SETUP ---
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
 
-# Example usage
-if __name__ == '__main__':
-    import argparse
+def calculate_ear(eye_landmarks):
+    """Calculate Eye Aspect Ratio"""
+    A = np.linalg.norm(eye_landmarks[1] - eye_landmarks[5])
+    B = np.linalg.norm(eye_landmarks[2] - eye_landmarks[4])
+    C = np.linalg.norm(eye_landmarks[0] - eye_landmarks[3])
+    ear = (A + B) / (2.0 * C)
+    return ear
 
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='NeoCare-AI Agent for Neonatal Monitoring')
-    parser.add_argument('--room', type=str, default='R2', help='Room ID (e.g., R2)')
-    parser.add_argument('--server', type=str, default='http://localhost:3000', help='Server URL')
-    parser.add_argument('--camera', type=str, default=None, help='Camera URL (optional)')
-    parser.add_argument('--mock', action='store_true', help='Use mock detection mode (no camera required)')
-    parser.add_argument('--interval', type=int, default=2, help='Check interval in seconds')
-    parser.add_argument('--log-level', type=str, default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'], help='Logging level')
+def analyze_frame(frame):
+    """Analyze frame for sleep detection"""
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb_frame)
+    
+    status = "No Face Detected"
+    confidence = 0.0
+    
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            landmarks = face_landmarks.landmark
+            h, w, _ = frame.shape
+            
+            left_eye_indices = [33, 160, 158, 133, 153, 144]
+            right_eye_indices = [362, 385, 387, 263, 373, 380]
+            
+            left_eye_coords = np.array([(landmarks[i].x * w, landmarks[i].y * h) for i in left_eye_indices])
+            right_eye_coords = np.array([(landmarks[i].x * w, landmarks[i].y * h) for i in right_eye_indices])
+            
+            left_ear = calculate_ear(left_eye_coords)
+            right_ear = calculate_ear(right_eye_coords)
+            avg_ear = (left_ear + right_ear) / 2.0
+            
+            if avg_ear < 0.25:
+                status = "Sleeping"
+                confidence = 1.0 - avg_ear
+            else:
+                status = "Awake"
+                confidence = avg_ear
+    
+    return status, confidence
 
-    args = parser.parse_args()
+def send_to_server(data):
+    """Send data to central server"""
+    try:
+        response = requests.post(
+            f"{EDGE_SERVER_URL}/api/monitoring/update",
+            json=data,
+            timeout=5
+        )
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"[WARNING] Server returned {response.status_code}")
+            return False
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Cannot reach server: {e}")
+        return False
 
-    # Create agent configuration
-    config = AgentConfig(
-        agent_name='NeoCare-AI',
-        room_id=args.room,
-        module='NeoCare-AI',
-        server_url=args.server,
-        camera_url=args.camera,
-        confidence_threshold=0.75,
-        alert_threshold=3,
-        check_interval=args.interval,
-        max_retries=5,
-        log_level=args.log_level
-    )
+# --- MAIN LOOP ---
+print("\nStarting webcam...")
+cap = cv2.VideoCapture(0)
 
-    # Create and run agent
-    agent = NeoCareAgent(config)
+if not cap.isOpened():
+    print("[ERROR] Cannot open webcam!")
+    exit(1)
 
-    print(f"\n{'='*60}")
-    print(f"  NeoCare-AI Agent Starting")
-    print(f"{'='*60}")
-    print(f"  Room ID:      {args.room}")
-    print(f"  Server:       {args.server}")
-    print(f"  Mock Mode:    {args.mock}")
-    print(f"  Interval:     {args.interval}s")
-    print(f"  Log Level:    {args.log_level}")
-    print(f"{'='*60}\n")
+print("[OK] Webcam ready!")
+print("==================================================")
+print("  NeoCare AI Agent - RUNNING                      ")
+print("  Press 'q' to quit                               ")
+print("==================================================\n")
 
-    agent.run()
+frame_count = 0
+last_send_time = time.time()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("[WARNING] Failed to grab frame")
+        break
+    
+    frame_count += 1
+    
+    # Analyze every frame for display, but send to server every 2 seconds
+    sleep_status, confidence = analyze_frame(frame)
+    
+    # Display status on frame
+    color = (0, 255, 0) if sleep_status == "Awake" else (0, 0, 255) if sleep_status == "Sleeping" else (128, 128, 128)
+    cv2.putText(frame, f"Status: {sleep_status}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+    cv2.putText(frame, f"Temp: {sensor_data['temperature']}C ({sensor_data['tempStatus']})", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(frame, f"Light: {sensor_data['lightStatus']}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(frame, f"BPM: {sensor_data['bpm']}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    
+    cv2.imshow('NeoCare AI Agent', frame)
+    
+    # Send to server every 2 seconds
+    current_time = time.time()
+    if current_time - last_send_time >= 2:
+        payload = {
+            "roomId": ROOM_ID,
+            "patientId": PATIENT_ID,
+            "module": MODULE,
+            "timestamp": datetime.now().isoformat(),
+            "aiStatus": sleep_status,
+            "confidence": confidence,
+            "sensors": sensor_data
+        }
+        
+        if send_to_server(payload):
+            print(f"[OK] [{datetime.now().strftime('%H:%M:%S')}] Sent: {sleep_status} | Temp: {sensor_data['temperature']}C | BPM: {sensor_data['bpm']}")
+        
+        last_send_time = current_time
+    
+    # Quit on 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+print("\n[OK] NeoCare AI Agent stopped.")

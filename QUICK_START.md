@@ -1,321 +1,137 @@
-# NEXCARE-5G Quick Start Card
-## Mobile Hotspot Multi-Device Setup
+# NeoCare System - Quick Start Guide
+
+## System Architecture
+
+### Laptop 1 (Central Edge Server)
+- **IP Address**: `10.107.51.130`
+- **Running**: Next.js Edge Server
+- **Access**: `http://10.107.51.130:3000`
+- **Purpose**: Central hub for all AI agents and WebRTC signaling
+
+### Laptop 2 (AI Agent + Local Dashboard) - THIS LAPTOP
+- **IP Address**: `10.107.51.42`
+- **Running**: 
+  1. NeoCare AI Agent (sends data to edge server)
+  2. Local Dashboard (connects to edge server)
+- **Access**: `http://localhost:3000` (local) or `http://10.107.51.42:3000` (network)
 
 ---
 
-## 📱 **1. ENABLE MOBILE HOTSPOT**
+## How to Start the System
 
-### Android:
-```
-Settings → Network & Internet → Hotspot & Tethering
-Network Name: NEXCARE-5G
-Password: nexcare2026
-Toggle: ON
-```
+### Quick Start (Recommended)
+1. **Double-click**: `START_COMPLETE_SYSTEM.bat`
+2. Wait for both windows to open:
+   - Window 1: AI Agent (with webcam preview)
+   - Window 2: Next.js Dashboard
+3. Open browser: `http://localhost:3000`
 
-### iPhone:
-```
-Settings → Personal Hotspot
-Password: nexcare2026
-Toggle: ON
-```
+### Manual Start
+If you need to start components separately:
 
----
-
-## 💻 **2. SETUP CENTRAL SERVER (Laptop 1)**
-
-### Windows (PowerShell):
-```powershell
-# Navigate to project
-cd C:\Users\krishna\Music\NEXCARE-5G\edge-server2
-
-# Run automated setup (RECOMMENDED)
-.\setup-hotspot.ps1
-
-# OR Manual setup:
-# 1. Find IP: ipconfig | findstr IPv4
-# 2. Create .env.local with your IP
-# 3. Allow firewall port 3000
-# 4. Build and start:
-npm run build
-npm start
-```
-
-### Mac/Linux:
+#### Start AI Agent Only
 ```bash
-cd /path/to/edge-server2
-chmod +x setup-hotspot.sh
-./setup-hotspot.sh
-npm run build
-npm start
+cd ai_agents
+python neocare_agent.py
 ```
 
-**Expected output:**
-```
-▲ Next.js 16.1.6
-- Local:    http://localhost:3000
-- Network:  http://192.168.43.10:3000  ← Use this IP!
+#### Start Dashboard Only
+```bash
+npm run dev
 ```
 
 ---
 
-## 🤖 **3. SETUP AI AGENTS (Laptops 2-3)**
+## What Each Component Does
 
-### Option A: Automated (PowerShell):
-```powershell
-cd C:\Users\krishna\Music\NEXCARE-5G\edge-server2\ai_agents
+### AI Agent (`ai_agents/neocare_agent.py`)
+- ✅ Connects to Arduino (COM6) for sensors
+- ✅ Captures webcam for sleep detection
+- ✅ Sends data to edge server every 2 seconds
+- ✅ Shows live preview window
 
-# Run setup script
-.\setup-agent.ps1
+**Data Sent**:
+- Sleep Status (Awake/Sleeping)
+- Temperature + Status (Low/Moderate/High)
+- Light Status (ON/OFF)
+- Heart Rate (BPM)
 
-# Follow prompts:
-# - Enter server IP: 192.168.43.10
-# - Choose room ID: R2 (or R5)
-# - Choose agent: NeoCare (or GeriCare)
+### Local Dashboard
+- ✅ Displays data from edge server
+- ✅ WebRTC video calling (connects to edge server for signaling)
+- ✅ Real-time monitoring
+- ✅ Can be accessed from this laptop or network
+
+---
+
+## Network Configuration
+
+### URLs
+- **Central Server**: `http://10.107.51.130:3000`
+- **Local Dashboard**: `http://localhost:3000`
+- **Local Dashboard (Network)**: `http://10.107.51.42:3000`
+- **AI Backend**: `http://10.107.51.42:5000` (if running separately)
+
+### WebRTC
+- **Signaling Server**: `http://10.107.51.130:3000` (Central Edge Server)
+- Both laptops connect to the same signaling server for video calls
+
+---
+
+## Troubleshooting
+
+### AI Agent Issues
+- **Arduino not detected**: Check COM port, close Arduino IDE Serial Monitor
+- **Webcam not working**: Check if another app is using it
+- **Cannot reach server**: Verify edge server is running on Laptop 1
+
+### Dashboard Issues
+- **npm command not found**: Run in PowerShell with execution policy bypass
+- **Port 3000 already in use**: Stop other Next.js instances
+- **WebRTC not connecting**: Check firewall, verify signaling server URL
+
+### Network Issues
+- **Cannot access from other laptop**: Check Windows Firewall
+- **Different IP addresses**: Update `.env.local` with correct edge server IP
+
+---
+
+## Configuration Files
+
+### `.env.local` (Dashboard Configuration)
+```env
+NEXT_PUBLIC_API_URL=http://10.107.51.130:3000
+NEXT_PUBLIC_SIGNALING_SERVER_URL=http://10.107.51.130:3000
+NEXT_PUBLIC_OFFLINE_MODE=true
+DATABASE_URL=file:./data/edgecare.db
+NEXT_PUBLIC_ENABLE_WEBRTC=true
 ```
 
-### Option B: Manual:
-```powershell
-# 1. Create .env file
-EDGE_SERVER_URL=http://192.168.43.10:3000
+### `ai_agents/.env` (AI Agent Configuration)
+```env
+EDGE_SERVER_URL=http://10.107.51.130:3000
 ROOM_ID=R2
+PATIENT_ID=P001
 MODULE=NeoCare-AI
-
-# 2. Activate venv and run
-.\venv\Scripts\Activate.ps1
-python neocare_agent.py --room R2 --server http://192.168.43.10:3000
 ```
 
 ---
 
-## 🖥️ **4. ACCESS FROM OTHER DEVICES (Laptops 4-5)**
+## Stopping the System
 
-### Doctor Console / Room Monitor:
-```
-1. Connect to NEXCARE-5G hotspot
-2. Open browser: http://192.168.43.10:3000
-3. Login with credentials:
-   - Doctor: doctor / doctor123
-   - Monitor: monitor / monitor123
-```
+1. **AI Agent**: Press 'q' in the webcam window or Ctrl+C in terminal
+2. **Dashboard**: Press Ctrl+C in the terminal running npm
 
 ---
 
-## 🧪 **5. VERIFY CONNECTIVITY**
+## System Status Indicators
 
-### On each laptop, test:
-```powershell
-# Test 1: Ping server
-ping 192.168.43.10
+### AI Agent
+- `[OK] Connected to Arduino on COM6!` - Sensors working
+- `[OK] Webcam ready!` - Camera working
+- `[OK] [HH:MM:SS] Sent: ...` - Data being sent to server
 
-# Test 2: Check API
-curl http://192.168.43.10:3000/api/health
-
-# Test 3: Open dashboard
-# Open browser: http://192.168.43.10:3000
-```
-
-**Expected:** All tests should succeed!
-
----
-
-## 🔧 **QUICK TROUBLESHOOTING**
-
-### ❌ "Cannot reach server"
-```powershell
-# On server laptop:
-netstat -an | findstr :3000
-# Should show: TCP 0.0.0.0:3000 ... LISTENING
-
-# Check firewall:
-Get-NetFirewallRule -DisplayName "NEXCARE*"
-
-# Temporarily disable to test:
-Set-NetFirewallProfile -Profile Private -Enabled False
-```
-
-### ❌ "Connection refused"
-```powershell
-# Restart server:
-# Press Ctrl+C to stop
-npm start
-
-# Check correct IP:
-ipconfig | findstr IPv4
-```
-
-### ❌ "AI agent can't connect"
-```powershell
-# Verify server URL in .env:
-cat .env | findstr SERVER
-
-# Should match server IP exactly
-```
-
-### ❌ "WebRTC video fails"
-```
-1. Check both devices on same network
-2. Grant camera/microphone permissions
-3. Use Chrome/Edge (best WebRTC support)
-4. Check NEXT_PUBLIC_SIGNALING_SERVER_URL in .env.local
-```
-
----
-
-## 📊 **IP ADDRESS REFERENCE**
-
-**Quick lookup - Update these with your actual IPs:**
-
-| Device | Purpose | IP Address | Port |
-|--------|---------|------------|------|
-| Phone | Hotspot Gateway | 192.168.43.1 | - |
-| Laptop 1 | Central Server | 192.168.43.10 | 3000 |
-| Laptop 2 | NeoCare Agent (R2) | 192.168.43.20 | - |
-| Laptop 3 | GeriCare Agent (R5) | 192.168.43.30 | - |
-| Laptop 4 | Doctor Console | 192.168.43.40 | - |
-| Laptop 5 | Room Monitor | 192.168.43.50 | - |
-
-**To find your IP:**
-- Windows: `ipconfig | findstr IPv4`
-- Mac/Linux: `ifconfig | grep inet`
-
----
-
-## 🎬 **DEMO DAY CHECKLIST**
-
-### 2 Hours Before:
-- [ ] Phone charged to 100%
-- [ ] Enable hotspot
-- [ ] Connect all laptops
-- [ ] Run setup-hotspot.ps1 on server
-- [ ] Note server IP address
-- [ ] Test API: `curl http://<IP>:3000/api/health`
-
-### 30 Minutes Before:
-- [ ] Start central server: `npm start`
-- [ ] Run AI agents on laptops 2-3
-- [ ] Open dashboards on laptops 4-5
-- [ ] Test video call
-- [ ] Verify all rooms showing online
-
-### During Demo:
-- [ ] Keep phone plugged in
-- [ ] Monitor server terminal
-- [ ] Watch for disconnections
-- [ ] Check data usage
-
----
-
-## 📞 **COMMON COMMANDS**
-
-### Server Management:
-```powershell
-# Start server
-npm start
-
-# Stop server
-Ctrl + C
-
-# Restart server
-Ctrl + C, then npm start
-
-# Check if running
-netstat -an | findstr :3000
-
-# View logs
-# Check terminal output
-```
-
-### Network Diagnostics:
-```powershell
-# Find your IP
-ipconfig | findstr IPv4
-
-# Test connectivity
-ping <server-ip>
-Test-NetConnection -ComputerName <server-ip> -Port 3000
-
-# Check firewall
-Get-NetFirewallRule -DisplayName "NEXCARE*"
-
-# Monitor connections
-netstat -an | findstr :3000
-```
-
-### Database:
-```powershell
-# Initialize/reset database
-npx tsx scripts/seed.ts
-
-# Open database browser
-npm run db:studio
-```
-
----
-
-## 🆘 **EMERGENCY RECOVERY**
-
-### If Everything Breaks:
-
-1. **Restart Hotspot:**
-   - Turn off phone hotspot
-   - Wait 10 seconds
-   - Turn back on
-   - Reconnect all laptops
-
-2. **Restart Server:**
-   ```powershell
-   Ctrl + C  # Stop server
-   npm start # Restart
-   ```
-
-3. **Reset Configuration:**
-   ```powershell
-   del .env.local
-   .\setup-hotspot.ps1  # Re-run setup
-   ```
-
-4. **Fallback to Localhost:**
-   - Run everything on one laptop
-   - Use `npm run dev:local`
-   - Demo from single device
-
----
-
-## 📚 **DOCUMENTATION**
-
-- **Full Setup Guide:** `docs/MOBILE_HOTSPOT_SETUP.md`
-- **Architecture Analysis:** See GitHub Copilot chat history
-- **Deployment Guide:** `docs/markdown/DEPLOYMENT.md`
-- **API Reference:** Test at `http://<IP>:3000/api/health`
-
----
-
-## 🎯 **SUCCESS INDICATORS**
-
-You're ready when:
-- ✅ Server shows: `- Network: http://192.168.43.10:3000`
-- ✅ AI agents print: `✓ Report sent: SLEEPING (conf: 0.87)`
-- ✅ Dashboard shows: "Total Rooms: 2" with green status
-- ✅ Video call works between 2 laptops
-- ✅ All laptops can ping server
-- ✅ curl returns `{"status":"ok"}`
-
----
-
-## 💡 **PRO TIPS**
-
-1. **Save Server IP:** Write it on a sticky note, put near laptop
-2. **Test Early:** Run full setup 1 day before demo
-3. **Backup Plan:** Have second phone ready as hotspot
-4. **Monitor Data:** Video uses ~2-5 MB/minute
-5. **Stay Close:** Keep laptops within 5m of phone
-6. **Use 5GHz:** If phone supports, better speed
-7. **Disable Sleep:** Prevent laptops from sleeping during demo
-8. **Close Apps:** Close unnecessary apps to save bandwidth
-
----
-
-**FOR HELP:** Check `docs/MOBILE_HOTSPOT_SETUP.md` or terminal output
-
-**Generated:** February 2026 | **NEXCARE-5G v0.1.0**
+### Dashboard
+- `✓ Ready in Xs` - Dashboard is running
+- `Local: http://localhost:3000` - Access URL
+- `Network: http://10.107.51.42:3000` - Network access URL
