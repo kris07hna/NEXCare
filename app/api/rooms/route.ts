@@ -15,14 +15,16 @@ export async function GET() {
     const registryRooms = roomRegistry.getAllRooms();
     const roomStatuses: RoomStatus[] = [];
 
+    // Fetch all patients ONCE to avoid N+1 query
+    const allPatients = await db.getPatients({ limit: 1000 });
+
     // Enrich room data with patient information
     for (const room of registryRooms) {
       let patientId = null;
       let patientName = null;
 
-      // Get patient info if room has a patient
-      const patients = await db.getPatients({ limit: 100 });
-      const patient = patients.find((p) => p.room_id === room.room_id && p.status === 'active');
+      // Find patient assigned to this room from pre-fetched list
+      const patient = allPatients.find((p) => p.room_id === room.room_id && p.status === 'active');
 
       if (patient) {
         patientId = patient.id;

@@ -22,7 +22,8 @@ export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'discharged'>('all');
   const [patientTypeFilter, setPatientTypeFilter] = useState<'all' | 'in-patient' | 'out-patient'>('all');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     loadPatients();
@@ -54,15 +55,27 @@ export default function PatientsPage() {
     if (!searchQuery && patientTypeFilter === 'all' && departmentFilter === 'all') return true;
     const query = searchQuery.toLowerCase();
     const matchesSearch = !searchQuery ||
-      patient.fullName.toLowerCase().includes(query) ||
-      patient.patientId.toLowerCase().includes(query) ||
-      (patient.roomId && patient.roomId.toLowerCase().includes(query));
+      patient.full_name.toLowerCase().includes(query) ||
+      patient.patient_id.toLowerCase().includes(query) ||
+      (patient.room_id && patient.room_id.toLowerCase().includes(query));
 
     return matchesSearch;
   });
 
   const activeCount = patients.filter(p => p.status === 'active').length;
-  const criticalCount = Math.floor(patients.length * 0.05); // Mock critical count
+  const criticalCount = patients.filter(p => p.status === 'critical').length;
+  const occupiedRooms = patients.filter(p => p.room_id && p.status === 'active').length;
+
+  const totalPages = Math.max(1, Math.ceil(filteredPatients.length / ITEMS_PER_PAGE));
+  const paginatedPatients = filteredPatients.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, patientTypeFilter, departmentFilter]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
@@ -153,8 +166,8 @@ export default function PatientsPage() {
             <StatCard
               icon={<Bed className="w-6 h-6" />}
               label="Occupied Rooms"
-              value="85%"
-              trend="+5.1%"
+              value={occupiedRooms.toString()}
+              trend={`${activeCount} active`}
               trendUp
               color="purple"
             />
@@ -210,7 +223,7 @@ export default function PatientsPage() {
               <div className="flex items-center gap-3">
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'discharged')}
                   className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-semibold focus:ring-blue-600/50 py-2 pl-3 pr-10 text-slate-900 dark:text-white"
                 >
                   <option value="all">Status: All</option>
@@ -233,7 +246,7 @@ export default function PatientsPage() {
                     // Export patients data as CSV
                     const csv = 'Patient ID,Name,Room,Status,Admission Date\n' + 
                       filteredPatients.map(p => 
-                        `${p.id},${p.fullName},${p.roomId || 'N/A'},${p.status},${new Date(p.admissionDate).toLocaleDateString()}`
+                        `${p.patient_id},${p.full_name},${p.room_id || 'N/A'},${p.status},${new Date(p.admission_date).toLocaleDateString()}`
                       ).join('\n');
                     const blob = new Blob([csv], { type: 'text/csv' });
                     const url = window.URL.createObjectURL(blob);
@@ -388,14 +401,7 @@ function StatCard({ icon, label, value, trend, trendUp, color }: {
 }
 
 function PatientRow({ patient, index, onView }: { patient: Patient; index: number; onView: () => void }) {
-  const mockData = [
-    { room: 'Room 402', status: 'Occupied', statusColor: 'blue', bloodType: 'A+', date: 'Oct 12, 2023', dept: 'Cardiology Dept.' },
-    { room: 'ICU-08', status: 'Critical', statusColor: 'red', bloodType: 'O-', date: 'Oct 21, 2023', dept: 'Intensive Care' },
-    { room: 'Out-Patient', status: 'Stable', statusColor: 'green', bloodType: 'B+', date: 'Oct 23, 2023', dept: 'Orthopedics' },
-    { room: 'Room 201', status: 'Observe', statusColor: 'orange', bloodType: 'AB-', date: 'Oct 24, 2023', dept: 'Maternity' },
-  ];
-
-  const data = mockData[index % mockData.length];
+  const statusColor = patient.status === 'active' ? 'green' : patient.status === 'critical' ? 'red' : 'blue';
 
   return (
     <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={onView}>
@@ -410,37 +416,36 @@ function PatientRow({ patient, index, onView }: { patient: Patient; index: numbe
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
           <div>
-            <p className="text-sm font-bold text-slate-900 dark:text-white">{patient.fullName}</p>
-            <p className="text-[11px] text-slate-500">{patient.age} yrs</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{patient.full_name}</p>
+            <p className="text-[11px] text-slate-500">{patient.age} yrs • {patient.gender || 'N/A'}</p>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">{patient.patientId}</td>
+      <td className="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">{patient.patient_id}</td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${
-            data.statusColor === 'blue' ? 'bg-blue-600' :
-            data.statusColor === 'red' ? 'bg-red-500' :
-            data.statusColor === 'green' ? 'bg-green-500' : 'bg-orange-500'
+            statusColor === 'green' ? 'bg-green-500' :
+            statusColor === 'red' ? 'bg-red-500' : 'bg-blue-600'
           }`}></div>
-          <span className="text-sm font-medium text-slate-900 dark:text-white">{patient.roomId || data.room}</span>
+          <span className="text-sm font-medium text-slate-900 dark:text-white">{patient.room_id || 'Unassigned'}</span>
           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-            data.statusColor === 'blue' ? 'bg-blue-600/10 text-blue-600 dark:bg-blue-600/20' :
-            data.statusColor === 'red' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' :
-            data.statusColor === 'green' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600'
+            statusColor === 'green' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' :
+            statusColor === 'red' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' :
+            'bg-blue-600/10 text-blue-600 dark:bg-blue-600/20'
           }`}>
-            {data.status}
+            {patient.status}
           </span>
         </div>
       </td>
       <td className="px-6 py-4 text-center">
         <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-900 dark:text-white">
-          {patient.bloodType || data.bloodType}
+          {patient.blood_type || '—'}
         </span>
       </td>
       <td className="px-6 py-4">
-        <p className="text-sm text-slate-900 dark:text-white">{data.date}</p>
-        <p className="text-[11px] text-slate-500">{data.dept}</p>
+        <p className="text-sm text-slate-900 dark:text-white">{new Date(patient.admission_date).toLocaleDateString()}</p>
+        <p className="text-[11px] text-slate-500">{patient.doctor_assigned || 'No doctor assigned'}</p>
       </td>
       <td className="px-6 py-4 text-right">
         <button

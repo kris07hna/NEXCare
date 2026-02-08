@@ -82,13 +82,14 @@ def read_serial_loop():
 serial_thread = threading.Thread(target=read_serial_loop, daemon=True)
 serial_thread.start()
 
-# --- MEDIAPIPE SETUP ---
+# --- MEDIAPIPE SETUP (Optimized) ---
 mp_face_mesh = mp.solutions.face_mesh
 face_mesh = mp_face_mesh.FaceMesh(
     max_num_faces=1,
-    refine_landmarks=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    refine_landmarks=False,  # Faster processing
+    min_detection_confidence=0.6,
+    min_tracking_confidence=0.6,
+    static_image_mode=False  # Video mode for better performance
 )
 
 def calculate_ear(eye_landmarks):
@@ -132,47 +133,77 @@ def analyze_frame(frame):
     return status, confidence
 
 def send_to_server(data):
-    """Send data to central server"""
+    """Send data to cloud via edge server API"""
     try:
+        # Add patient_id to ensure proper database linkage
+        data['patient_id'] = PATIENT_ID
+        
         response = requests.post(
             f"{EDGE_SERVER_URL}/api/reports",
             json=data,
-            timeout=5
+            timeout=3,  # Faster timeout for quicker retries
+            headers={'Content-Type': 'application/json'}
         )
+        
         if response.status_code == 201:
-            print(f"✓ Report sent: {data['status']} | Temp: {data['metadata']['temperature']}°C | BPM: {data['metadata']['bpm']}")
+            result = response.json()
+            print(f"✓ Cloud sync: {data['status']} | Temp: {data['metadata']['temperature']}°C | BPM: {data['metadata']['bpm']} | Report ID: {result.get('report_id', 'N/A')}")
             return True
         else:
-            print(f"✗ Server returned {response.status_code}: {response.text}")
+            print(f"✗ Server error {response.status_code}: {response.text[:100]}")
             return False
-    except requests.exceptions.RequestException as e:
-        print(f"✗ Connection error: {e}")
+    except requests.exceptions.Timeout:
+        print(f"✗ Timeout - Check network connection to {EDGE_SERVER_URL}")
+        return False
+    except requests.exceptions.ConnectionError:
+        print(f"✗ Cannot connect to edge server at {EDGE_SERVER_URL}")
+        return False
+    except Exception as e:
+        print(f"✗ Unexpected error: {type(e).__name__}: {e}")
         return False
 
 # --- MAIN LOOP ---
 print("\nStarting webcam...")
 cap = cv2.VideoCapture(0)
 
+# Optimize webcam settings for better performance
 if not cap.isOpened():
     print("[ERROR] Cannot open webcam!")
     exit(1)
 
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Lower resolution for faster processing
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FPS, 30)  # Consistent frame rate
+
 print("[OK] Webcam ready!")
 print("==================================================")
-print("  NeoCare AI Agent - RUNNING                      ")
+print("  NeoCare AI Agent - RUNNING (4s cloud sync)     ")
 print("  Press 'q' to quit                               ")
 print("==================================================\n")
 
+# Performance tracking
 frame_count = 0
 last_send_time = time.time()
+SEND_INTERVAL = 4.0  # Send to cloud every 4 seconds (user requirement)
+FRAME_SKIP = 2  # Process every 2nd frame for better performance
+success_count = 0
+error_count = 0
 
 while True:
     ret, frame = cap.read()
     if not ret:
         print("[WARNING] Failed to grab frame")
-        break
+        time.sleep(0.1)
+        continue
     
     frame_count += 1
+    
+    # Skip frames for better performance (process every Nth frame)
+    if frame_count % FRAME_SKIP != 0:
+        cv2.imshow('NeoCare AI Agent', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        continue
     
     # Analyze frame for sleep detection
     sleep_status, confidence = analyze_frame(frame)
@@ -182,30 +213,55 @@ while True:
     cv2.putText(frame, f"Status: {sleep_status}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
     cv2.putText(frame, f"Temp: {sensor_data['temperature']}C ({sensor_data['tempStatus']})", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
     cv2.putText(frame, f"BPM: {sensor_data['bpm']}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(frame, f"Room: {ROOM_ID}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+    cv2.putText(frame, f"Room: {ROOM_ID} | Patient: {PATIENT_ID}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+    
+    # Show next sync countdown
+    time_until_sync = SEND_INTERVAL - (time.time() - last_send_time)
+    sync_color = (0, 255, 255) if time_until_sync > 1 else (0, 255, 0)
+    cv2.putText(frame, f"Cloud Sync: {time_until_sync:.1f}s", (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.6, sync_color, 2)
+    cv2.putText(frame, f"Success: {success_count} | Errors: {error_count}", (10, 190), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
     
     cv2.imshow('NeoCare AI Agent', frame)
     
-    # Send to server every 2 seconds
+    # Send to cloud every 4 seconds (optimized interval)
     current_time = time.time()
-    if current_time - last_send_time >= 2:
+    if current_time - last_send_time >= SEND_INTERVAL:
+        # Determine alert level based on conditions
+        alert_level = "normal"
+        if sensor_data['temperature'] > 38.0:
+            alert_level = "warning"
+        if sensor_data['temperature'] > 39.0 or sensor_data['bpm'] > 160 or sensor_data['bpm'] < 100:
+            alert_level = "critical"
+        
         payload = {
             "room_id": ROOM_ID,
+            "patient_id": PATIENT_ID,  # Include patient_id for database linkage
             "module": MODULE,
             "timestamp": int(datetime.now().timestamp()),
             "status": sleep_status,
-            "confidence": confidence,
-            "alert_level": "normal",
+            "confidence": round(confidence, 2),
+            "alert_level": alert_level,
             "metadata": {
-                "temperature": sensor_data['temperature'],
+                "temperature": round(sensor_data['temperature'], 1),
                 "tempStatus": sensor_data['tempStatus'],
                 "lightStatus": sensor_data['lightStatus'],
                 "bpm": sensor_data['bpm'],
-                "sensorStatus": sensor_data['status']
+                "sensorStatus": sensor_data['status'],
+                "sleepState": sleep_status,
+                "frameCount": frame_count,
+                "edgeNode": "NeoCare-Edge-1"
             }
         }
         
-        send_to_server(payload)
+        if send_to_server(payload):
+            success_count += 1
+        else:
+            error_count += 1
+        
+        # Show transmission stats
+        if (success_count + error_count) % 5 == 0:
+            print(f"[Stats] Success: {success_count} | Errors: {error_count} | Success Rate: {success_count/(success_count+error_count)*100:.1f}%")
+        
         last_send_time = current_time
     
     # Quit on 'q'

@@ -9,20 +9,41 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { RoomCard } from '@/components/dashboard/RoomCard';
 import { useRooms } from '@/hooks/useRooms';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useActivity } from '@/hooks/useActivity';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   Activity, Users, Bed, Shield, Search, Bell, Settings,
   Sun, Moon, Grid3X3, MonitorCheck, UserCircle, BarChart3,
   Video, AlertCircle, Clock, TrendingUp, Eye, Baby, HeartPulse,
-  Calendar, Stethoscope, Server, FileDown
+  Calendar, Stethoscope, Server, FileDown, CheckCircle
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { rooms, loading, error, onlineCount, offlineCount, refetch } = useRooms(5000);
+  const { notifications, unreadCount } = useNotifications(10000);
+  const { activities } = useActivity(20, 10000);
   const [filterView, setFilterView] = useState<'all' | 'critical'>('all');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDoctorMenu, setShowDoctorMenu] = useState(false);
+  const [patientCount, setPatientCount] = useState(0);
+
+  // Fetch patient count for stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/patients?status=active');
+        if (res.ok) {
+          const data = await res.json();
+          setPatientCount(data.patients?.length || 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const doctorMenuRef = useRef<HTMLDivElement>(null);
@@ -102,37 +123,6 @@ export default function DashboardPage() {
 
   const criticalRooms = rooms.filter((r) => r.alertLevel === 'critical');
   const displayRooms = filterView === 'critical' ? criticalRooms : rooms;
-
-  const activities = [
-    {
-      type: 'critical',
-      icon: <AlertCircle className="w-4 h-4" />,
-      title: 'Fall Alert',
-      description: 'Room 5: Movement detected',
-      detail: 'AI identified potential fall for Arthur Miller. Nurses dispatched.',
-      time: '2 mins ago',
-      color: 'red',
-      actions: true,
-    },
-    {
-      type: 'vitals',
-      icon: <Activity className="w-4 h-4" />,
-      title: 'Vitals Update',
-      description: 'Room 12: Elena Vance',
-      detail: 'Vitals stabilized. AI recommends transition to standard ward.',
-      time: '14 mins ago',
-      color: 'blue',
-    },
-    {
-      type: 'consultation',
-      icon: <Clock className="w-4 h-4" />,
-      title: 'Video Call Confirmed',
-      description: 'Patient #8821 with Dr. Smith scheduled at 2:00 PM.',
-      detail: '',
-      time: '45 mins ago',
-      color: 'purple',
-    },
-  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-white dark:bg-slate-900 transition-colors duration-300">
@@ -218,7 +208,11 @@ export default function DashboardPage() {
                 className="relative p-2.5 bg-white dark:bg-slate-800 shadow-sm rounded-xl hover:scale-105 transition-transform"
               >
                 <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* Notifications Dropdown */}
@@ -242,24 +236,22 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    <NotificationItem
-                      type="critical"
-                      title="Fall Alert - Room 5"
-                      message="AI detected potential fall for Arthur Miller"
-                      time="2 mins ago"
-                    />
-                    <NotificationItem
-                      type="warning"
-                      title="Vitals Alert - Room 12"
-                      message="Heart rate elevated for Elena Vance"
-                      time="15 mins ago"
-                    />
-                    <NotificationItem
-                      type="info"
-                      title="Consultation Scheduled"
-                      message="Dr. Smith with Patient #8821 at 2:00 PM"
-                      time="1 hour ago"
-                    />
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-slate-500">No new notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          type={notification.type}
+                          title={notification.title}
+                          message={notification.message}
+                          time={notification.time}
+                        />
+                      ))
+                    )}
                   </div>
                   <div className="p-4 border-t border-slate-200 dark:border-slate-700">
                     <button
@@ -357,21 +349,21 @@ export default function DashboardPage() {
             <StatCard
               icon={<UserCircle className="w-6 h-6" />}
               label="Active Patients"
-              value="128"
-              trend="+12%"
+              value={patientCount.toString()}
+              trend={`${onlineCount} rooms online`}
               color="blue"
             />
             <StatCard
               icon={<Bed className="w-6 h-6" />}
-              label="Available Beds"
-              value="42"
-              subtitle="of 170"
+              label="Active Rooms"
+              value={onlineCount.toString()}
+              subtitle={`${offlineCount} offline`}
               color="purple"
             />
             <StatCard
               icon={<Shield className="w-6 h-6" />}
-              label="AI Diagnostic Confidence"
-              value="99.8%"
+              label="AI Confidence"
+              value={rooms.length > 0 ? `${Math.round(rooms.reduce((sum, r) => sum + r.confidence, 0) / rooms.length * 100)}%` : '—'}
               verified
               color="emerald"
             />
@@ -402,7 +394,8 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">\n            {/* Live Room Monitoring */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Live Room Monitoring */}
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Live Room Monitoring</h3>
@@ -468,9 +461,18 @@ export default function DashboardPage() {
               <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm p-6 overflow-hidden relative">
                 <div className="absolute left-10 top-10 bottom-10 w-px bg-slate-100 dark:bg-slate-700"></div>
                 <div className="space-y-8 relative">
-                  {activities.map((activity, idx) => (
-                    <ActivityItem key={idx} {...activity} />
-                  ))}
+                  {activities.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-slate-400">No recent activity</p>
+                    </div>
+                  ) : (
+                    activities.slice(0, 5).map((activity) => (
+                      <ActivityItem 
+                        key={activity.id} 
+                        activity={activity}
+                      />
+                    ))
+                  )}
                 </div>
                 <button className="w-full mt-8 py-3 text-slate-400 text-xs font-bold border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl hover:border-blue-600 hover:text-blue-600 transition-all uppercase tracking-wider">
                   View All Activity
@@ -581,7 +583,11 @@ function CareModuleCard({ title, description, icon, color, onClick }: {
   );
 }
 
-function RoomMonitorCard({ room, onViewDetails, onStartConsultation }: any) {
+function RoomMonitorCard({ room, onViewDetails, onStartConsultation }: {
+  room: import('@/types').RoomStatus;
+  onViewDetails: () => void;
+  onStartConsultation: () => void;
+}) {
   const alertColors = {
     critical: 'ring-4 ring-red-500/50',
     warning: 'ring-2 ring-amber-500/50',
@@ -645,37 +651,54 @@ function RoomMonitorCard({ room, onViewDetails, onStartConsultation }: any) {
   );
 }
 
-function ActivityItem({ type, icon, title, description, detail, time, color, actions }: any) {
+function ActivityItem({ activity }: { activity: import('@/hooks/useActivity').Activity }) {
+  // Map severity to color
+  const severityColors = {
+    critical: 'red',
+    warning: 'purple',
+    info: 'blue',
+    success: 'blue',
+  };
+  
+  const color = severityColors[activity.severity as keyof typeof severityColors] || 'blue';
+  
+  // Map icon name to component
+  const getIcon = () => {
+    switch (activity.icon) {
+      case 'alert-circle':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'check-circle':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'video':
+        return <Video className="w-4 h-4" />;
+      case 'activity':
+      default:
+        return <Activity className="w-4 h-4" />;
+    }
+  };
+
   const colorClasses = {
     red: 'bg-red-100 dark:bg-red-900/30 text-red-500',
     blue: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600',
     purple: 'bg-violet-100 dark:bg-violet-900/30 text-violet-600',
   };
 
+  const iconEl = getIcon();
+
   return (
     <div className="flex gap-4 relative">
       <div className={`w-8 h-8 rounded-full ${colorClasses[color as keyof typeof colorClasses]} flex items-center justify-center z-10 shrink-0 border-4 border-white dark:border-slate-800`}>
-        {icon}
+        {iconEl}
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
           <span className={`text-xs font-bold uppercase ${color === 'red' ? 'text-red-500' : color === 'blue' ? 'text-blue-600' : 'text-violet-600'}`}>
-            {title}
+            {activity.type || 'Update'}
           </span>
-          <span className="text-[10px] text-slate-400">{time}</span>
+          <span className="text-[10px] text-slate-400">{activity.timeAgo}</span>
         </div>
-        <p className="text-sm font-semibold mb-1 text-slate-900 dark:text-white">{description}</p>
-        {detail && <p className="text-xs text-slate-500 dark:text-slate-400">{detail}</p>}
-        {actions && (
-          <div className="mt-3 flex gap-2">
-            <button className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-              DISMISS
-            </button>
-            <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-colors">
-              VIEW FEED
-            </button>
-          </div>
-        )}
+        <p className="text-sm font-semibold mb-1 text-slate-900 dark:text-white">{activity.title}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{activity.description}</p>
       </div>
     </div>
   );

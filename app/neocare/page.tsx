@@ -74,6 +74,7 @@ export default function NeoCareAIPage() {
   // Live Monitoring State
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const monitorIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [liveStatus, setLiveStatus] = useState<string>('Waiting for camera...');
   const [liveColor, setLiveColor] = useState<string>('gray'); // 'gray', 'green', 'red'
@@ -124,27 +125,27 @@ export default function NeoCareAIPage() {
         setLiveStatus('Camera Active. Analyzing...');
 
         // Start polling backend
-        const intervalId = setInterval(captureAndCheck, 1000); // Check every second
-        // Store interval ID to clear later if needed (simple implementation for now)
-        (window as any).monitorInterval = intervalId;
+        const intervalId = setInterval(captureAndCheck, 1000);
+        monitorIntervalRef.current = intervalId;
       }
-    } catch (err: any) {
-      console.error("Error accessing camera:", err);
+    } catch (err: unknown) {
+      const cameraError = err as { name?: string; message?: string };
+      console.error("Error accessing camera:", cameraError);
       
       // Provide specific error messages based on error type
       let errorMessage = 'Error: Camera Access Failed';
       let alertMessage = 'Camera Error\n\n';
 
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (cameraError.name === 'NotAllowedError' || cameraError.name === 'PermissionDeniedError') {
         errorMessage = 'Error: Camera Permission Denied';
         alertMessage += 'You denied camera access!\n\nTo fix:\n1. Click the camera icon in browser address bar\n2. Allow camera access\n3. Refresh the page and try again';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (cameraError.name === 'NotFoundError' || cameraError.name === 'DevicesNotFoundError') {
         errorMessage = 'Error: No Camera Found';
         alertMessage += 'No camera detected!\n\nPlease check:\n1. Camera is connected\n2. Camera is enabled in Device Manager\n3. Close other apps using the camera';
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      } else if (cameraError.name === 'NotReadableError' || cameraError.name === 'TrackStartError') {
         errorMessage = 'Error: Camera Already in Use';
         alertMessage += 'Camera is being used by another application!\n\nTo fix:\n1. Close other apps using camera (Zoom, Teams, etc.)\n2. Check if another browser tab is using camera\n3. Restart your browser';
-      } else if (err.name === 'OverconstrainedError') {
+      } else if (cameraError.name === 'OverconstrainedError') {
         errorMessage = 'Error: Camera Not Compatible';
         alertMessage += 'Your camera doesn\'t support the required settings.\n\nTrying with default settings...';
         
@@ -157,17 +158,17 @@ export default function NeoCareAIPage() {
             setIsMonitoring(true);
             setLiveStatus('Camera Active (Basic Quality)');
             const intervalId = setInterval(captureAndCheck, 1000);
-            (window as any).monitorInterval = intervalId;
+            monitorIntervalRef.current = intervalId;
             return;
           }
         } catch (retryErr) {
           console.error("Retry failed:", retryErr);
         }
-      } else if (err.name === 'TypeError') {
+      } else if (cameraError.name === 'TypeError') {
         errorMessage = 'Error: Browser Not Supported';
         alertMessage += 'Your browser doesn\'t support camera access!\n\nPlease use:\n- Chrome 53+\n- Firefox 36+\n- Edge 12+\n- Safari 11+';
       } else {
-        alertMessage += `Unknown error: ${err.message}\n\nTry:\n1. Refresh the page\n2. Restart your browser\n3. Check camera in Device Manager`;
+        alertMessage += `Unknown error: ${cameraError.message || 'Unknown'}\n\nTry:\n1. Refresh the page\n2. Restart your browser\n3. Check camera in Device Manager`;
       }
 
       setLiveStatus(errorMessage);
@@ -176,7 +177,7 @@ export default function NeoCareAIPage() {
   };
 
   const stopMonitoring = () => {
-    if ((window as any).monitorInterval) clearInterval((window as any).monitorInterval);
+    if (monitorIntervalRef.current) clearInterval(monitorIntervalRef.current);
     if (videoRef.current && videoRef.current.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
@@ -217,7 +218,7 @@ export default function NeoCareAIPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if ((window as any).monitorInterval) clearInterval((window as any).monitorInterval);
+      if (monitorIntervalRef.current) clearInterval(monitorIntervalRef.current);
     };
   }, []);
 

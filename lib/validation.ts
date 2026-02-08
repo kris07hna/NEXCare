@@ -21,7 +21,7 @@ export const createReportSchema = z.object({
   alert_level: z.enum(['normal', 'warning', 'critical']).default('normal'),
   alert_count: z.number().int().default(0),
   person_ids: z.array(z.number()).optional(),
-  metadata: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const getReportsQuerySchema = z.object({
@@ -97,7 +97,7 @@ export const createSignalSchema = z.object({
   from_peer: z.string().min(1, 'From peer is required'),
   to_peer: z.string().min(1, 'To peer is required'),
   signal_type: z.enum(['offer', 'answer', 'ice-candidate']),
-  signal_data: z.any(), // RTCSessionDescriptionInit or RTCIceCandidateInit
+  signal_data: z.unknown(), // RTCSessionDescriptionInit or RTCIceCandidateInit
 });
 
 // ============================================================================

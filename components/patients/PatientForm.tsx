@@ -9,6 +9,17 @@ import { useRouter } from 'next/navigation';
 import { Save, X, User, Phone, Heart, FileText } from 'lucide-react';
 import type { Patient } from '@/types';
 
+/** Safely parse a JSON array string into a comma-separated string for form display */
+function safeParseArray(value: string | undefined | null): string {
+  if (!value) return '';
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.join(', ') : String(value);
+  } catch {
+    return String(value);
+  }
+}
+
 interface PatientFormProps {
   patient?: Patient;
   mode: 'create' | 'edit';
@@ -21,23 +32,19 @@ export function PatientForm({ patient, mode, onSuccess }: PatientFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    patient_id: patient?.patientId || '',
-    full_name: patient?.fullName || '',
+    patient_id: patient?.patient_id || '',
+    full_name: patient?.full_name || '',
     age: patient?.age || '',
     gender: patient?.gender || 'male',
-    room_id: patient?.roomId || '',
-    contact_number: patient?.contactNumber || '',
-    emergency_contact: patient?.emergencyContact || '',
-    emergency_phone: patient?.emergencyPhone || '',
-    blood_type: patient?.bloodType || '',
-    allergies: patient?.allergies ? JSON.parse(patient.allergies).join(', ') : '',
-    current_medications: patient?.currentMedications
-      ? JSON.parse(patient.currentMedications).join(', ')
-      : '',
-    medical_conditions: patient?.medicalConditions
-      ? JSON.parse(patient.medicalConditions).join(', ')
-      : '',
-    doctor_assigned: patient?.doctorAssigned || '',
+    room_id: patient?.room_id || '',
+    contact_number: patient?.contact_number || '',
+    emergency_contact: patient?.emergency_contact || '',
+    emergency_phone: patient?.emergency_phone || '',
+    blood_type: patient?.blood_type || '',
+    allergies: safeParseArray(patient?.allergies),
+    current_medications: safeParseArray(patient?.current_medications),
+    medical_conditions: safeParseArray(patient?.medical_conditions),
+    doctor_assigned: patient?.doctor_assigned || '',
     notes: patient?.notes || '',
   });
 

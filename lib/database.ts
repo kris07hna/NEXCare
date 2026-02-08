@@ -16,6 +16,15 @@ export interface Patient {
   admission_date: string;
   status: string;
   blood_type?: string;
+  contact_number?: string;
+  emergency_contact?: string;
+  emergency_phone?: string;
+  allergies?: string;
+  current_medications?: string;
+  medical_conditions?: string;
+  doctor_assigned?: string;
+  notes?: string;
+  discharge_date?: string;
   created_at?: string;
 }
 
@@ -80,7 +89,8 @@ export class EdgeCareDatabase {
     };
   }
 
-  async execute(query: string, params?: any[]): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async execute(_query: string, _params?: unknown[]): Promise<void> {
     // Stub method - raw SQL execution would require RPC or direct database access
     console.warn('execute() is a stub - implement with Supabase RPC if needed');
   }
@@ -313,24 +323,28 @@ export class EdgeCareDatabase {
   // WEB RTC SIGNALING (Stub methods)
   // ==================================================
 
-  async getPendingSignals(peerId: string): Promise<any[]> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getPendingSignals(_peerId: string): Promise<Record<string, unknown>[]> {
     // Stub method - implement when WebRTC signaling table is added to Supabase
     return [];
   }
 
-  async deleteSignal(signalId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async deleteSignal(_signalId: string): Promise<void> {
     // Stub method - implement when WebRTC signaling table is added to Supabase
   }
 
-  async storeSignal(signal: any): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async storeSignal(_signal: Record<string, unknown>): Promise<void> {
     // Stub method - implement when WebRTC signaling table is added to Supabase
   }
 
-  async markSignalDelivered(signalId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async markSignalDelivered(_signalId: string): Promise<void> {
     // Stub method - implement when WebRTC signaling table is added to Supabase
   }
 
-  async createSignal(signal: any): Promise<any> {
+  async createSignal(signal: Record<string, unknown>): Promise<Record<string, unknown>> {
     // Stub method - implement when WebRTC signaling table is added to Supabase
     return { ...signal, id: Date.now().toString() };
   }

@@ -26,7 +26,7 @@ export interface HealthResponse {
   port: number;
   database: {
     status: 'connected' | 'disconnected';
-    type: 'sqlite' | 'supabase';
+    type: 'supabase';
   };
   ai_agents: {
     online: number;
@@ -45,7 +45,7 @@ export interface CreateReportRequest {
   predictions?: Record<string, number>;
   bbox?: [number, number, number, number];
   alert_level?: 'normal' | 'warning' | 'critical';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface GetReportsResponse {
@@ -198,10 +198,10 @@ export interface WebRTCCallState {
 export interface APIError {
   error: string;
   message?: string;
-  details?: any;
+  details?: unknown;
 }
 
-export interface APISuccess<T = any> {
+export interface APISuccess<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
@@ -222,7 +222,12 @@ export interface RoomRegistryEntry {
   confidence: number;
   last_seen: string;
   online: boolean;
-  latest_report: any;
+  latest_report: {
+    alertLevel?: string;
+    status?: string;
+    confidence?: number;
+    timestamp?: number;
+  } | AIReport | null;
 }
 
 export type RoomRegistry = Map<string, RoomRegistryEntry>;

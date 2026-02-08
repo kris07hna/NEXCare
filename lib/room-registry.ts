@@ -18,7 +18,7 @@ class RoomRegistry {
     status: string;
     confidence: number;
     timestamp: number;
-    latest_report: any;
+    latest_report: RoomRegistryEntry['latest_report'];
   }): void {
     const lastSeen = new Date(data.timestamp * 1000).toISOString();
 

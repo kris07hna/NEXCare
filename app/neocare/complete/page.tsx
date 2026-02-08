@@ -14,6 +14,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Patient, AIReport, RoomStatus } from '@/types';
+
+function safeParseArray(value: string | undefined | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 import {
   CriticalAlertBanner,
   RegistryView,
@@ -128,8 +138,8 @@ export default function CompleteNeoCareAIPage() {
 
           return {
             id: patient?.id || room.roomId,
-            patientId: patient?.patientId || `P${room.roomId}`,
-            name: patient?.fullName || `Patient ${room.roomId}`,
+            patientId: patient?.patient_id || `P${room.roomId}`,
+            name: patient?.full_name || `Patient ${room.roomId}`,
             age: patient?.age || 0,
             bedNumber: room.roomId.replace('R', '').padStart(2, '0'),
             roomId: room.roomId,
@@ -142,11 +152,11 @@ export default function CompleteNeoCareAIPage() {
             temperature,
             cycleProgress: Math.floor(Math.random() * 100),
             lastUpdate: room.lastSeen,
-            admissionDate: patient?.admissionDate || new Date().toISOString(),
-            doctorAssigned: patient?.doctorAssigned || 'Not assigned',
-            emergencyContact: patient?.emergencyContact || 'N/A',
-            allergies: patient?.allergies ? JSON.parse(patient.allergies as string) : [],
-            medicalConditions: patient?.medicalConditions ? JSON.parse(patient.medicalConditions as string) : [],
+            admissionDate: patient?.admission_date || new Date().toISOString(),
+            doctorAssigned: patient?.doctor_assigned || 'Not assigned',
+            emergencyContact: patient?.emergency_contact || 'N/A',
+            allergies: patient?.allergies ? safeParseArray(patient.allergies) : [],
+            medicalConditions: patient?.medical_conditions ? safeParseArray(patient.medical_conditions) : [],
             alertCount: roomReports.length,
           };
         });
@@ -163,7 +173,7 @@ export default function CompleteNeoCareAIPage() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 2000);
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -327,7 +337,13 @@ export default function CompleteNeoCareAIPage() {
 }
 
 // Header Component
-function NeoCareHeader({ searchQuery, setSearchQuery, criticalCount, viewMode, setViewMode }: any) {
+function NeoCareHeader({ searchQuery, setSearchQuery, criticalCount, viewMode, setViewMode }: {
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  criticalCount: number;
+  viewMode: ViewMode;
+  setViewMode: (v: ViewMode) => void;
+}) {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
       <div className="px-6 py-4 md:px-10">
@@ -399,7 +415,13 @@ function NeoCareHeader({ searchQuery, setSearchQuery, criticalCount, viewMode, s
   );
 }
 
-function NavTab({ active, onClick, icon, label, badge }: any) {
+function NavTab({ active, onClick, icon, label, badge }: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  badge?: number;
+}) {
   return (
     <button
       onClick={onClick}
@@ -418,7 +440,13 @@ function NavTab({ active, onClick, icon, label, badge }: any) {
 }
 
 // Dashboard View
-function DashboardView({ infants, selectedUnit, setSelectedUnit, clinicalUnits, onViewPatient }: any) {
+function DashboardView({ infants, selectedUnit, setSelectedUnit, clinicalUnits, onViewPatient }: {
+  infants: InfantData[];
+  selectedUnit: string;
+  setSelectedUnit: (u: string) => void;
+  clinicalUnits: { id: string; name: string; beds: string[] }[];
+  onViewPatient: (infant: InfantData) => void;
+}) {
   return (
     <>
       <div className="flex justify-between items-center">
@@ -432,7 +460,7 @@ function DashboardView({ infants, selectedUnit, setSelectedUnit, clinicalUnits, 
           onChange={(e) => setSelectedUnit(e.target.value)}
           className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
         >
-          {clinicalUnits.map((unit: any) => (
+          {clinicalUnits.map((unit: { id: string; name: string; beds: string[] }) => (
             <option key={unit.id} value={unit.id}>{unit.name}</option>
           ))}
         </select>

@@ -10,108 +10,31 @@ import { useState } from 'react';
 import {
   ArrowLeft, Monitor, Heart, Droplets, Wind, Thermometer,
   AlertCircle, CheckCircle, Video, Bed, Clock,
-  Maximize2, Volume2, VolumeX
+  Maximize2, Volume2, VolumeX, RefreshCw
 } from 'lucide-react';
-
-interface RoomData {
-  id: string;
-  roomNumber: string;
-  patientName: string;
-  status: 'stable' | 'warning' | 'critical';
-  heartRate: number;
-  bloodPressure: string;
-  oxygen: number;
-  temperature: number;
-  lastUpdate: string;
-  hasVideo: boolean;
-  alerts: string[];
-}
+import { useRooms } from '@/hooks/useRooms';
+import type { RoomStatus } from '@/types';
 
 export default function RoomMonitoringPage() {
   const router = useRouter();
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [muteAll, setMuteAll] = useState(false);
+  const { rooms, loading, error, onlineCount, offlineCount, refetch } = useRooms(5000);
 
-  const rooms: RoomData[] = [
-    {
-      id: '1',
-      roomNumber: 'ICU-101',
-      patientName: 'Sarah Miller',
-      status: 'stable',
-      heartRate: 72,
-      bloodPressure: '120/80',
-      oxygen: 98,
-      temperature: 36.8,
-      lastUpdate: '30 sec ago',
-      hasVideo: true,
-      alerts: []
-    },
-    {
-      id: '2',
-      roomNumber: 'ICU-102',
-      patientName: 'James Wilson',
-      status: 'critical',
-      heartRate: 145,
-      bloodPressure: '165/95',
-      oxygen: 89,
-      temperature: 38.2,
-      lastUpdate: '5 sec ago',
-      hasVideo: true,
-      alerts: ['High Heart Rate', 'Low O2', 'Elevated BP']
-    },
-    {
-      id: '3',
-      roomNumber: 'ICU-103',
-      patientName: 'Emma Davis',
-      status: 'warning',
-      heartRate: 110,
-      bloodPressure: '140/85',
-      oxygen: 93,
-      temperature: 37.5,
-      lastUpdate: '15 sec ago',
-      hasVideo: true,
-      alerts: ['Elevated Heart Rate']
-    },
-    {
-      id: '4',
-      roomNumber: 'ICU-104',
-      patientName: 'Michael Brown',
-      status: 'stable',
-      heartRate: 68,
-      bloodPressure: '115/75',
-      oxygen: 99,
-      temperature: 36.6,
-      lastUpdate: '20 sec ago',
-      hasVideo: true,
-      alerts: []
-    },
-    {
-      id: '5',
-      roomNumber: 'ICU-105',
-      patientName: 'Lisa Anderson',
-      status: 'stable',
-      heartRate: 75,
-      bloodPressure: '118/78',
-      oxygen: 97,
-      temperature: 36.9,
-      lastUpdate: '45 sec ago',
-      hasVideo: true,
-      alerts: []
-    },
-    {
-      id: '6',
-      roomNumber: 'ICU-106',
-      patientName: 'David Martinez',
-      status: 'warning',
-      heartRate: 105,
-      bloodPressure: '135/88',
-      oxygen: 94,
-      temperature: 37.2,
-      lastUpdate: '10 sec ago',
-      hasVideo: true,
-      alerts: ['Elevated Temp']
-    }
-  ];
+  const stableCount = rooms.filter(r => r.alertLevel === 'normal').length;
+  const warningCount = rooms.filter(r => r.alertLevel === 'warning').length;
+  const criticalCount = rooms.filter(r => r.alertLevel === 'critical').length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-500">Loading rooms...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -131,12 +54,21 @@ export default function RoomMonitoringPage() {
                 Room Monitoring
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Live patient monitoring • <span className="text-emerald-500 font-medium">{rooms.length} Active Rooms</span>
+                Live patient monitoring • <span className="text-emerald-500 font-medium">{onlineCount} Online</span>
+                {offlineCount > 0 && <span className="text-slate-400 ml-2">• {offlineCount} Offline</span>}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Refresh</span>
+            </button>
+
             <button
               onClick={() => setMuteAll(!muteAll)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -153,7 +85,7 @@ export default function RoomMonitoringPage() {
 
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Live</span>
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Live • 5s</span>
             </div>
           </div>
         </div>
@@ -161,45 +93,43 @@ export default function RoomMonitoringPage() {
 
       {/* Stats */}
       <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard
-          icon={<Bed className="w-6 h-6" />}
-          label="Total Rooms"
-          value={rooms.length.toString()}
-          color="blue"
-        />
-        <StatCard
-          icon={<CheckCircle className="w-6 h-6" />}
-          label="Stable"
-          value={rooms.filter(r => r.status === 'stable').length.toString()}
-          color="emerald"
-        />
-        <StatCard
-          icon={<AlertCircle className="w-6 h-6" />}
-          label="Warning"
-          value={rooms.filter(r => r.status === 'warning').length.toString()}
-          color="amber"
-        />
-        <StatCard
-          icon={<AlertCircle className="w-6 h-6" />}
-          label="Critical"
-          value={rooms.filter(r => r.status === 'critical').length.toString()}
-          color="red"
-        />
+        <StatCard icon={<Bed className="w-6 h-6" />} label="Total Rooms" value={rooms.length.toString()} color="blue" />
+        <StatCard icon={<CheckCircle className="w-6 h-6" />} label="Stable" value={stableCount.toString()} color="emerald" />
+        <StatCard icon={<AlertCircle className="w-6 h-6" />} label="Warning" value={warningCount.toString()} color="amber" />
+        <StatCard icon={<AlertCircle className="w-6 h-6" />} label="Critical" value={criticalCount.toString()} color="red" />
       </div>
+
+      {error && (
+        <div className="mx-6 mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+          <p className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</p>
+        </div>
+      )}
 
       {/* Room Grid */}
       <div className="p-6 pt-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              isSelected={selectedRoom === room.id}
-              onClick={() => setSelectedRoom(room.id)}
-              onExpand={() => router.push(`/patients/${room.id}`)}
-            />
-          ))}
-        </div>
+        {rooms.length === 0 ? (
+          <div className="text-center py-20">
+            <Monitor className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No rooms detected</h3>
+            <p className="text-sm text-slate-500">Rooms will appear here when AI agents start sending reports</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rooms.map((room) => (
+              <RoomCard
+                key={room.roomId}
+                room={room}
+                isSelected={selectedRoom === room.roomId}
+                onClick={() => setSelectedRoom(room.roomId)}
+                onExpand={() => {
+                  if (room.patientId) {
+                    router.push(`/patients/${room.patientId}`);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -230,13 +160,14 @@ function StatCard({ icon, label, value, color }: {
 }
 
 function RoomCard({ room, isSelected, onClick, onExpand }: {
-  room: RoomData;
+  room: RoomStatus;
   isSelected: boolean;
   onClick: () => void;
   onExpand: () => void;
 }) {
+  const alertLevel = room.alertLevel as 'normal' | 'warning' | 'critical';
   const statusConfig = {
-    stable: {
+    normal: {
       bg: 'border-emerald-200 dark:border-emerald-800',
       badge: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400',
       dot: 'bg-emerald-500'
@@ -253,21 +184,25 @@ function RoomCard({ room, isSelected, onClick, onExpand }: {
     }
   };
 
+  const config = statusConfig[alertLevel] || statusConfig.normal;
+  const confidence = Math.round(room.confidence * 100);
+  const timeSince = room.lastSeen ? getTimeSince(room.lastSeen) : 'Unknown';
+
   return (
     <div
-      className={`bg-white dark:bg-slate-900 rounded-2xl border-2 ${statusConfig[room.status].bg} overflow-hidden transition-all hover:shadow-lg ${
+      className={`bg-white dark:bg-slate-900 rounded-2xl border-2 ${config.bg} overflow-hidden transition-all hover:shadow-lg ${
         isSelected ? 'ring-2 ring-blue-500' : ''
       }`}
       onClick={onClick}
     >
-      {/* Video Feed */}
+      {/* Video Feed Placeholder */}
       <div className="relative aspect-video bg-slate-200 dark:bg-slate-800">
         <div className="absolute inset-0 flex items-center justify-center">
           <Video className="w-12 h-12 text-slate-400" />
         </div>
         <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-sm rounded-lg">
-          <div className={`w-2 h-2 rounded-full ${statusConfig[room.status].dot}`}></div>
-          <span className="text-xs font-bold text-white">{room.roomNumber}</span>
+          <div className={`w-2 h-2 rounded-full ${config.dot}`}></div>
+          <span className="text-xs font-bold text-white">{room.roomId}</span>
         </div>
         <button
           onClick={(e) => {
@@ -278,71 +213,71 @@ function RoomCard({ room, isSelected, onClick, onExpand }: {
         >
           <Maximize2 className="w-4 h-4 text-white" />
         </button>
-        <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-          <span className="text-xs font-bold text-white">LIVE</span>
-        </div>
+        {room.online && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-white">LIVE</span>
+          </div>
+        )}
+        {!room.online && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-2">
+            <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+            <span className="text-xs font-bold text-white/70">OFFLINE</span>
+          </div>
+        )}
       </div>
 
       {/* Patient Info */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{room.patientName}</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{room.patientName || 'No Patient'}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-1">
               <Clock className="w-3 h-3" />
-              {room.lastUpdate}
+              {timeSince}
             </p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusConfig[room.status].badge}`}>
-            {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${config.badge}`}>
+            {alertLevel.charAt(0).toUpperCase() + alertLevel.slice(1)}
           </span>
         </div>
 
-        {/* Vitals Grid */}
+        {/* Status & Confidence */}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          <VitalMini
-            icon={<Heart className="w-4 h-4" />}
-            label="HR"
-            value={room.heartRate.toString()}
-            unit="bpm"
-            status={room.heartRate > 100 ? 'warning' : 'normal'}
-          />
-          <VitalMini
-            icon={<Wind className="w-4 h-4" />}
-            label="SpO2"
-            value={room.oxygen.toString()}
-            unit="%"
-            status={room.oxygen < 92 ? 'critical' : room.oxygen < 95 ? 'warning' : 'normal'}
-          />
-          <VitalMini
-            icon={<Droplets className="w-4 h-4" />}
-            label="BP"
-            value={room.bloodPressure}
-            unit=""
-            status="normal"
-          />
-          <VitalMini
-            icon={<Thermometer className="w-4 h-4" />}
-            label="Temp"
-            value={room.temperature.toString()}
-            unit="°C"
-            status={room.temperature > 37.5 ? 'warning' : 'normal'}
-          />
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+              <Heart className="w-4 h-4" />
+              <span className="text-xs font-medium">Status</span>
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{room.status}</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+              <Wind className="w-4 h-4" />
+              <span className="text-xs font-medium">AI Confidence</span>
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{confidence}%</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl col-span-2">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+              <Monitor className="w-4 h-4" />
+              <span className="text-xs font-medium">Module</span>
+            </div>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">{room.module}</p>
+          </div>
         </div>
 
-        {/* Alerts */}
-        {room.alerts.length > 0 && (
-          <div className="space-y-2">
-            {room.alerts.map((alert, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 rounded-lg"
-              >
-                <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                <span className="text-xs font-medium text-red-700 dark:text-red-400">{alert}</span>
-              </div>
-            ))}
+        {/* Alert for critical/warning */}
+        {alertLevel === 'critical' && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <span className="text-xs font-medium text-red-700 dark:text-red-400">Critical Alert - Immediate Attention Required</span>
+          </div>
+        )}
+        {alertLevel === 'warning' && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Warning - Monitor Closely</span>
           </div>
         )}
       </div>
@@ -350,28 +285,17 @@ function RoomCard({ room, isSelected, onClick, onExpand }: {
   );
 }
 
-function VitalMini({ icon, label, value, unit, status }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  unit: string;
-  status: 'normal' | 'warning' | 'critical';
-}) {
-  const statusColors = {
-    normal: 'text-slate-900 dark:text-white',
-    warning: 'text-amber-600 dark:text-amber-400',
-    critical: 'text-red-600 dark:text-red-400'
-  };
-
-  return (
-    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
-      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
-        {icon}
-        <span className="text-xs font-medium">{label}</span>
-      </div>
-      <p className={`text-lg font-bold ${statusColors[status]}`}>
-        {value}<span className="text-xs ml-1">{unit}</span>
-      </p>
-    </div>
-  );
+function getTimeSince(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  if (diffSecs < 60) return `${diffSecs}s ago`;
+  const diffMins = Math.floor(diffSecs / 60);
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
 }
+
+// End of file

@@ -14,6 +14,16 @@ import { motion } from 'framer-motion';
 import { PatientForm } from '@/components/patients/PatientForm';
 import type { Patient, AIReport } from '@/types';
 
+function safeParseArray(value: string | undefined | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -32,6 +42,7 @@ export default function PatientDetailPage({ params }: PageProps) {
   useEffect(() => {
     loadPatient();
     loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   const loadPatient = async () => {
@@ -142,9 +153,9 @@ export default function PatientDetailPage({ params }: PageProps) {
               <User className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{patient.fullName}</h1>
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{patient.full_name}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                ID: <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-indigo-600">{patient.patientId}</code>
+                ID: <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono text-indigo-600">{patient.patient_id}</code>
               </p>
             </div>
           </div>
@@ -187,8 +198,8 @@ export default function PatientDetailPage({ params }: PageProps) {
             <div className="grid gap-5 sm:grid-cols-2">
               <InfoItem label="Age" value={`${patient.age} years`} />
               <InfoItem label="Gender" value={patient.gender || 'Not specified'} capitalize />
-              <InfoItem label="Room" value={patient.roomId || 'Not assigned'} />
-              <InfoItem label="Blood Type" value={patient.bloodType || 'Not specified'} icon={<Droplets className="h-3.5 w-3.5 text-red-400" />} />
+              <InfoItem label="Room" value={patient.room_id || 'Not assigned'} />
+              <InfoItem label="Blood Type" value={patient.blood_type || 'Not specified'} icon={<Droplets className="h-3.5 w-3.5 text-red-400" />} />
               <div>
                 <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Status</div>
                 <span className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -200,7 +211,7 @@ export default function PatientDetailPage({ params }: PageProps) {
                   {patient.status}
                 </span>
               </div>
-              <InfoItem label="Assigned Doctor" value={patient.doctorAssigned || 'Not assigned'} icon={<Stethoscope className="h-3.5 w-3.5 text-violet-400" />} />
+              <InfoItem label="Assigned Doctor" value={patient.doctor_assigned || 'Not assigned'} icon={<Stethoscope className="h-3.5 w-3.5 text-violet-400" />} />
             </div>
           </motion.div>
 
@@ -218,10 +229,10 @@ export default function PatientDetailPage({ params }: PageProps) {
               Contact Information
             </h3>
             <div className="grid gap-5 sm:grid-cols-2">
-              <InfoItem label="Contact Number" value={patient.contactNumber || 'Not provided'} />
-              <InfoItem label="Emergency Contact" value={patient.emergencyContact || 'Not provided'} />
-              {patient.emergencyPhone && (
-                <InfoItem label="Emergency Phone" value={patient.emergencyPhone} />
+              <InfoItem label="Contact Number" value={patient.contact_number || 'Not provided'} />
+              <InfoItem label="Emergency Contact" value={patient.emergency_contact || 'Not provided'} />
+              {patient.emergency_phone && (
+                <InfoItem label="Emergency Phone" value={patient.emergency_phone} />
               )}
             </div>
           </motion.div>
@@ -240,11 +251,11 @@ export default function PatientDetailPage({ params }: PageProps) {
               Medical Information
             </h3>
             <div className="space-y-4">
-              {patient.allergies && (
+              {patient.allergies && safeParseArray(patient.allergies).length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Allergies</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {JSON.parse(patient.allergies).map((a: string, i: number) => (
+                    {safeParseArray(patient.allergies).map((a: string, i: number) => (
                       <span key={i} className="inline-flex items-center gap-1 rounded-lg bg-red-50 border border-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
                         <Shield className="h-3 w-3" />
                         {a}
@@ -253,21 +264,21 @@ export default function PatientDetailPage({ params }: PageProps) {
                   </div>
                 </div>
               )}
-              {patient.currentMedications && (
+              {patient.current_medications && safeParseArray(patient.current_medications).length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Current Medications</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {JSON.parse(patient.currentMedications).map((m: string, i: number) => (
+                    {safeParseArray(patient.current_medications).map((m: string, i: number) => (
                       <span key={i} className="rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">{m}</span>
                     ))}
                   </div>
                 </div>
               )}
-              {patient.medicalConditions && (
+              {patient.medical_conditions && safeParseArray(patient.medical_conditions).length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Medical Conditions</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {JSON.parse(patient.medicalConditions).map((c: string, i: number) => (
+                    {safeParseArray(patient.medical_conditions).map((c: string, i: number) => (
                       <span key={i} className="rounded-lg bg-amber-50 border border-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">{c}</span>
                     ))}
                   </div>
@@ -279,7 +290,7 @@ export default function PatientDetailPage({ params }: PageProps) {
                   <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-100">{patient.notes}</p>
                 </div>
               )}
-              {!patient.allergies && !patient.currentMedications && !patient.medicalConditions && !patient.notes && (
+              {!patient.allergies && !patient.current_medications && !patient.medical_conditions && !patient.notes && (
                 <p className="text-sm text-slate-400 italic">No medical information recorded</p>
               )}
             </div>
@@ -313,9 +324,9 @@ export default function PatientDetailPage({ params }: PageProps) {
             ) : (
               <div className="space-y-2.5">
                 {reports.map((report) => {
-                  const alertColor = report.alertLevel === 'critical'
+                  const alertColor = report.alert_level === 'critical'
                     ? 'border-l-red-500 bg-red-50/50'
-                    : report.alertLevel === 'warning'
+                    : report.alert_level === 'warning'
                     ? 'border-l-amber-500 bg-amber-50/50'
                     : 'border-l-emerald-500 bg-slate-50/80';
 
@@ -361,14 +372,14 @@ export default function PatientDetailPage({ params }: PageProps) {
               <div>
                 <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Admission Date</div>
                 <div className="mt-1.5 text-sm font-semibold text-slate-900">
-                  {new Date(patient.admissionDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(patient.admission_date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
                 </div>
               </div>
-              {patient.dischargeDate && (
+              {patient.discharge_date && (
                 <div>
                   <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Discharge Date</div>
                   <div className="mt-1.5 text-sm font-semibold text-slate-900">
-                    {new Date(patient.dischargeDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                    {new Date(patient.discharge_date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
                   </div>
                 </div>
               )}

@@ -66,26 +66,14 @@ export async function POST(request: NextRequest) {
 
     const validatedData = createPatientSchema.parse(body);
 
-    // Convert arrays to JSON strings for storage
-    const patientData: any = {
-      fullName: validatedData.full_name,
+    // Use snake_case keys matching the database schema
+    const patientData: Partial<import('@/lib/database').Patient> & Record<string, unknown> = {
+      full_name: validatedData.full_name,
       age: validatedData.age,
       gender: validatedData.gender,
-      roomId: validatedData.room_id,
-      admissionDate: validatedData.admission_date || new Date().toISOString(),
-      contactNumber: validatedData.contact_number,
-      emergencyContact: validatedData.emergency_contact,
-      emergencyPhone: validatedData.emergency_phone,
-      bloodType: validatedData.blood_type,
-      doctorAssigned: validatedData.doctor_assigned,
-      notes: validatedData.notes,
-      allergies: validatedData.allergies ? JSON.stringify(validatedData.allergies) : undefined,
-      currentMedications: validatedData.current_medications
-        ? JSON.stringify(validatedData.current_medications)
-        : undefined,
-      medicalConditions: validatedData.medical_conditions
-        ? JSON.stringify(validatedData.medical_conditions)
-        : undefined,
+      room_id: validatedData.room_id,
+      admission_date: validatedData.admission_date || new Date().toISOString(),
+      blood_type: validatedData.blood_type,
     };
 
     const patient = await db.createPatient(patientData);

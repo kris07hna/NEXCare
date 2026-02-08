@@ -64,14 +64,11 @@ export async function GET() {
   try {
     await db.initialize();
 
-    // For now, we'll return active consultations
-    // In production, you'd add filters and pagination
-    const { reports } = await db.getReports({ limit: 100 });
+    const consultations = await db.getConsultations({ limit: 100 });
 
-    // This is a simplified version - in production, query consultation_sessions table
     return NextResponse.json({
-      consultations: [],
-      count: 0,
+      consultations,
+      count: consultations.length,
     });
   } catch (error) {
     console.error('[API /consultations GET] Error:', error);

@@ -45,16 +45,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const validatedData = updatePatientSchema.parse(body);
 
     // Convert arrays to JSON strings if present
-    const updateData: any = { ...validatedData };
+    const updateData: Record<string, unknown> = { ...validatedData };
 
     if (validatedData.allergies) {
       updateData.allergies = JSON.stringify(validatedData.allergies);
     }
     if (validatedData.current_medications) {
-      updateData.currentMedications = JSON.stringify(validatedData.current_medications);
+      updateData.current_medications = JSON.stringify(validatedData.current_medications);
     }
     if (validatedData.medical_conditions) {
-      updateData.medicalConditions = JSON.stringify(validatedData.medical_conditions);
+      updateData.medical_conditions = JSON.stringify(validatedData.medical_conditions);
     }
 
     const patient = await db.updatePatient(id, updateData);

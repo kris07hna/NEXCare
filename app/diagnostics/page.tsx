@@ -6,42 +6,75 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Activity, Server, Cpu, HardDrive, Wifi, Database,
   CheckCircle, AlertTriangle, TrendingUp, Zap,
   Globe, ArrowLeft, RefreshCw, Download
 } from 'lucide-react';
 
+interface HealthData {
+  status: string;
+  version: string;
+  timestamp: string;
+  server_ip: string;
+  all_ips: string[];
+  port: number;
+  database: { status: string; type: string };
+  ai_agents: { online: number; total: number };
+}
+
 export default function DiagnosticsPage() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const fetchHealth = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const response = await fetch('/api/health');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setHealth(data);
+      setError(null);
+      setLastRefresh(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch health data');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 10000); // refresh every 10s
+    return () => clearInterval(interval);
+  }, [fetchHealth]);
 
   const systemMetrics = [
-    { label: 'CPU Usage', value: 34, max: 100, unit: '%', status: 'good', icon: <Cpu className="w-5 h-5" /> },
-    { label: 'Memory', value: 8.2, max: 16, unit: 'GB', status: 'good', icon: <HardDrive className="w-5 h-5" /> },
-    { label: '5G Latency', value: 2, max: 10, unit: 'ms', status: 'excellent', icon: <Wifi className="w-5 h-5" /> },
-    { label: 'Database', value: 156, max: 500, unit: 'MB', status: 'good', icon: <Database className="w-5 h-5" /> },
+    { label: 'Server Status', value: health?.status === 'healthy' ? 'Healthy' : health?.status || '...', max: 'OK', unit: '', status: health?.status === 'healthy' ? 'excellent' : 'warning', icon: <Cpu className="w-5 h-5" />, pct: health?.status === 'healthy' ? 20 : 80 },
+    { label: 'Database', value: health?.database.status || '...', max: 'OK', unit: '', status: health?.database.status === 'connected' ? 'good' : 'warning', icon: <Database className="w-5 h-5" />, pct: health?.database.status === 'connected' ? 15 : 90 },
+    { label: 'AI Agents Online', value: `${health?.ai_agents.online ?? 0}/${health?.ai_agents.total ?? 0}`, max: '', unit: '', status: (health?.ai_agents.online ?? 0) > 0 ? 'good' : 'warning', icon: <HardDrive className="w-5 h-5" />, pct: health?.ai_agents.total ? (health.ai_agents.online / health.ai_agents.total) * 100 : 0 },
+    { label: 'Network IPs', value: (health?.all_ips.length ?? 0).toString(), max: '', unit: ' found', status: 'good', icon: <Wifi className="w-5 h-5" />, pct: 30 },
   ];
 
   const serverStatus = [
-    { name: 'Edge Server 1', status: 'online', uptime: '99.9%', response: '2ms', load: 34 },
-    { name: 'Edge Server 2', status: 'online', uptime: '99.8%', response: '3ms', load: 28 },
-    { name: 'Main Cloud Server', status: 'online', uptime: '100%', response: '12ms', load: 15 },
-    { name: 'Backup Server', status: 'standby', uptime: '100%', response: '5ms', load: 0 },
-  ];
-
-  const recentEvents = [
-    { time: '2 mins ago', type: 'success', message: 'NeoCare module health check passed' },
-    { time: '5 mins ago', type: 'info', message: 'Database backup completed successfully' },
-    { time: '12 mins ago', type: 'warning', message: 'High CPU usage detected on Room R7' },
-    { time: '18 mins ago', type: 'success', message: '5G connection re-established' },
-    { time: '25 mins ago', type: 'info', message: 'System update available' },
+    {
+      name: `Edge Server (${health?.server_ip || '...'})`,
+      status: health?.status === 'healthy' ? 'online' : 'degraded',
+      uptime: health?.status === 'healthy' ? '99.9%' : 'N/A',
+      response: 'Local',
+      load: health?.ai_agents.online ?? 0
+    },
+    {
+      name: `Supabase (${health?.database.type || 'cloud'})`,
+      status: health?.database.status === 'connected' ? 'online' : 'offline',
+      uptime: health?.database.status === 'connected' ? '100%' : '0%',
+      response: '~50ms',
+      load: health?.database.status === 'connected' ? 10 : 0
+    },
   ];
 
   return (
@@ -59,12 +92,14 @@ export default function DiagnosticsPage() {
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">System Diagnostics</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Real-time health monitoring & analytics</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Real-time health monitoring • Auto-refresh 10s • Last: {lastRefresh.toLocaleTimeString()}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleRefresh}
+                onClick={fetchHealth}
                 disabled={refreshing}
                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
@@ -80,6 +115,12 @@ export default function DiagnosticsPage() {
         </div>
       </header>
 
+      {error && (
+        <div className="mx-8 mt-8 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+          <p className="text-sm text-red-700 dark:text-red-400 font-medium">Error: {error}</p>
+        </div>
+      )}
+
       <div className="p-8 space-y-8">
         {/* System Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -93,7 +134,6 @@ export default function DiagnosticsPage() {
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {metric.value}{metric.unit}
                   </p>
-                  <p className="text-xs text-slate-400">of {metric.max}{metric.unit}</p>
                 </div>
               </div>
               <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">{metric.label}</p>
@@ -103,7 +143,7 @@ export default function DiagnosticsPage() {
                     metric.status === 'excellent' ? 'bg-emerald-500' :
                     metric.status === 'good' ? 'bg-blue-500' : 'bg-amber-500'
                   }`}
-                  style={{ width: `${(metric.value / metric.max) * 100}%` }}
+                  style={{ width: `${Math.min(100, metric.pct)}%` }}
                 />
               </div>
             </div>
@@ -136,10 +176,6 @@ export default function DiagnosticsPage() {
                     <p className="text-xs text-slate-400">Response</p>
                     <p className="font-semibold text-slate-900 dark:text-white">{server.response}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-slate-400">Load</p>
-                    <p className="font-semibold text-slate-900 dark:text-white">{server.load}%</p>
-                  </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                     server.status === 'online' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30' :
                     server.status === 'standby' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' :
@@ -153,54 +189,48 @@ export default function DiagnosticsPage() {
           </div>
         </div>
 
-        {/* Recent Events */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Activity className="w-6 h-6 text-blue-600" />
-              Recent System Events
-            </h2>
-          </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
-            {recentEvents.map((event, idx) => (
-              <div key={idx} className="px-6 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <div className={`p-2 rounded-lg ${
-                  event.type === 'success' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' :
-                  event.type === 'warning' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' :
-                  'bg-blue-100 text-blue-600 dark:bg-blue-900/30'
-                }`}>
-                  {event.type === 'success' ? <CheckCircle className="w-4 h-4" /> :
-                   event.type === 'warning' ? <AlertTriangle className="w-4 h-4" /> :
-                   <Activity className="w-4 h-4" />}
+        {/* Network IPs */}
+        {health?.all_ips && health.all_ips.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Globe className="w-6 h-6 text-blue-600" />
+                Network Interfaces
+              </h2>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              {health.all_ips.map((ip, idx) => (
+                <div key={idx} className="px-6 py-3 flex items-center gap-4">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                  <code className="text-sm font-mono text-slate-700 dark:text-slate-300">{ip}</code>
+                  {idx === 0 && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30">PRIMARY</span>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{event.message}</p>
-                  <p className="text-xs text-slate-400">{event.time}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Network Status */}
+        {/* Bottom Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white">
             <Globe className="w-8 h-8 mb-4" />
-            <p className="text-sm opacity-80 mb-1">Active Connections</p>
-            <p className="text-4xl font-bold">24</p>
-            <p className="text-xs opacity-60 mt-2">All systems operational</p>
+            <p className="text-sm opacity-80 mb-1">Server Version</p>
+            <p className="text-4xl font-bold">{health?.version || '...'}</p>
+            <p className="text-xs opacity-60 mt-2">Port {health?.port || '...'}</p>
           </div>
           <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
             <Zap className="w-8 h-8 mb-4" />
-            <p className="text-sm opacity-80 mb-1">5G Throughput</p>
-            <p className="text-4xl font-bold">1.2 Gbps</p>
-            <p className="text-xs opacity-60 mt-2">Ultra-low latency mode</p>
+            <p className="text-sm opacity-80 mb-1">AI Agents</p>
+            <p className="text-4xl font-bold">{health?.ai_agents.online ?? 0} Online</p>
+            <p className="text-xs opacity-60 mt-2">{health?.ai_agents.total ?? 0} Total registered</p>
           </div>
           <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white">
             <TrendingUp className="w-8 h-8 mb-4" />
             <p className="text-sm opacity-80 mb-1">System Health</p>
-            <p className="text-4xl font-bold">98.5%</p>
-            <p className="text-xs opacity-60 mt-2">Excellent performance</p>
+            <p className="text-4xl font-bold capitalize">{health?.status || '...'}</p>
+            <p className="text-xs opacity-60 mt-2">Database: {health?.database.status || '...'}</p>
           </div>
         </div>
       </div>

@@ -14,7 +14,18 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { motion } from 'framer-motion';
+import type { AIReport, Patient } from '@/types';
+
+interface ConsultationRecord {
+  id: string;
+  startTime: string;
+  durationSeconds?: number;
+  [key: string]: unknown;
+}
+
 import { format, subDays, startOfDay } from 'date-fns';
+
+const CHART_COLORS = ['#6366f1', '#06b6d4', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
 
 // Types
 interface AnalyticsData {
@@ -28,7 +39,7 @@ interface AnalyticsData {
   alertLevelDistribution: { level: string; count: number }[];
 }
 
-const CHART_COLORS = ['#6366f1', '#06b6d4', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'];
+import { format, subDays, startOfDay } from 'date-fns';
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -55,18 +66,18 @@ export default function AnalyticsPage() {
       const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
       const cutoffDate = subDays(new Date(), days);
 
-      const recentReports = reports.filter((r: any) =>
-        new Date(r.createdAt) > cutoffDate
+      const recentReports = reports.filter((r: AIReport) =>
+        new Date(r.created_at || '').getTime() > cutoffDate.getTime()
       );
 
-      const recentConsultations = Array.isArray(consultations)
-        ? consultations.filter((c: any) => new Date(c.startTime) > cutoffDate)
+      const recentConsultations: ConsultationRecord[] = Array.isArray(consultations)
+        ? consultations.filter((c: ConsultationRecord) => new Date(c.startTime).getTime() > cutoffDate.getTime())
         : [];
 
-      const moduleCount = recentReports.reduce((acc: any, report: any) => {
+      const moduleCount = recentReports.reduce((acc: Record<string, number>, report: AIReport) => {
         acc[report.module] = (acc[report.module] || 0) + 1;
         return acc;
-      }, {});
+      }, {} as Record<string, number>);
 
       const reportsByModule = Object.entries(moduleCount).map(([module, count]) => ({
         module: module.replace('-AI', ''),
@@ -80,19 +91,19 @@ export default function AnalyticsPage() {
         const dayEnd = new Date(dayStart);
         dayEnd.setDate(dayEnd.getDate() + 1);
 
-        const count = recentReports.filter((r: any) => {
-          const reportDate = new Date(r.createdAt);
+        const count = recentReports.filter((r: AIReport) => {
+          const reportDate = new Date(r.created_at || '');
           return reportDate >= dayStart && reportDate < dayEnd;
         }).length;
 
         return { date: format(date, 'MMM dd'), count };
       });
 
-      const alertCount = recentReports.reduce((acc: any, report: any) => {
-        const level = report.alertLevel || 'normal';
+      const alertCount = recentReports.reduce((acc: Record<string, number>, report: AIReport) => {
+        const level = report.alert_level || 'normal';
         acc[level] = (acc[level] || 0) + 1;
         return acc;
-      }, {});
+      }, {} as Record<string, number>);
 
       const alertLevelDistribution = [
         { level: 'Normal', count: alertCount.normal || 0 },
@@ -100,9 +111,9 @@ export default function AnalyticsPage() {
         { level: 'Critical', count: alertCount.critical || 0 },
       ];
 
-      const completedConsultations = recentConsultations.filter((c: any) => c.durationSeconds);
+      const completedConsultations = recentConsultations.filter((c: ConsultationRecord) => c.durationSeconds);
       const avgDuration = completedConsultations.length > 0
-        ? completedConsultations.reduce((sum: number, c: any) => sum + c.durationSeconds, 0) / completedConsultations.length
+        ? completedConsultations.reduce((sum: number, c: ConsultationRecord) => sum + (c.durationSeconds || 0), 0) / completedConsultations.length
         : 0;
 
       const patientsList = patients.patients || patients;
@@ -110,7 +121,7 @@ export default function AnalyticsPage() {
       setAnalytics({
         totalReports: recentReports.length,
         totalConsultations: recentConsultations.length,
-        activePatients: Array.isArray(patientsList) ? patientsList.filter((p: any) => p.status === 'active').length : 0,
+        activePatients: Array.isArray(patientsList) ? patientsList.filter((p: Patient) => p.status === 'active').length : 0,
         avgConsultationDuration: Math.round(avgDuration),
         criticalAlerts: alertCount.critical || 0,
         reportsByModule,

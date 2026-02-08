@@ -20,6 +20,14 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Pages that have their own sidebar/full-layout navigation
+  const pagesWithOwnNav = ['/', '/patients', '/neocare', '/room-monitoring', '/diagnostics'];
+  const shouldHide = pagesWithOwnNav.some(p => 
+    p === '/' ? pathname === '/' : pathname.startsWith(p)
+  );
+
+  if (shouldHide) return null;
+
   return (
     <nav className="sticky top-0 z-50 glass border-b border-white/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
