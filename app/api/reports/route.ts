@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     const { reports, total } = await db.getReports({
       roomId: validatedQuery.room_id,
       patientId: validatedQuery.patient_id,
-      module: validatedQuery.module as any,
+      module: validatedQuery.module as ('NeoCare-AI' | 'GeriCare-AI') | undefined,
       alertLevel: validatedQuery.alert_level,
       limit: validatedQuery.limit,
       offset: validatedQuery.offset,
