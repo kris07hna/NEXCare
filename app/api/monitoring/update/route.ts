@@ -21,7 +21,6 @@ export async function POST(request: Request) {
     // Extract data
     const {
       roomId,
-      patientId,
       module,
       timestamp,
       aiStatus,
@@ -77,7 +76,10 @@ export async function POST(request: Request) {
 /**
  * Determine alert level based on AI status and sensor data
  */
-function determineAlertLevel(aiStatus: string, sensors: any): string {
+function determineAlertLevel(
+  aiStatus: string, 
+  sensors: { tempStatus?: string; bpm?: number; lightStatus?: string } | undefined
+): string {
   // Critical alerts
   if (sensors?.tempStatus === 'High' || sensors?.tempStatus === 'Low') {
     return 'critical';
