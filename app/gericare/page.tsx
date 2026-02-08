@@ -34,7 +34,8 @@ export default function GeriCareAIPage() {
   const router = useRouter();
   const [showCriticalAlert, setShowCriticalAlert] = useState(true);
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'sensors' | 'logs'>('dashboard');
+  // Merged: using 'live_feed' as a possible view state along with upstream states
+  const [currentView, setCurrentView] = useState<'dashboard' | 'sensors' | 'logs' | 'live_feed'>('dashboard');
   const [emergencyCallInProgress, setEmergencyCallInProgress] = useState(false);
 
   const rooms: RoomData[] = [
@@ -117,9 +118,18 @@ export default function GeriCareAIPage() {
             </h1>
           </div>
           <nav className="hidden md:flex items-center gap-6 ml-4">
-            <a className="text-sm font-semibold text-blue-600" href="#">
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className={`text-sm font-semibold transition-colors ${currentView === 'dashboard' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}`}
+            >
               Live Monitor
-            </a>
+            </button>
+            <button
+              onClick={() => setCurrentView('live_feed')}
+              className={`text-sm font-semibold transition-colors ${currentView === 'live_feed' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'}`}
+            >
+              AI Camera Feed
+            </button>
             <a className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors" href="#">
               Patients
             </a>
@@ -168,6 +178,12 @@ export default function GeriCareAIPage() {
             />
             <SidebarButton
               icon={<Radio className="w-5 h-5" />}
+              label="Live AI Feed"
+              active={currentView === 'live_feed'}
+              onClick={() => setCurrentView('live_feed')}
+            />
+            <SidebarButton
+              icon={<Activity className="w-5 h-5" />}
               label="Sensor Status"
               active={currentView === 'sensors'}
               onClick={() => setCurrentView('sensors')}
@@ -187,36 +203,32 @@ export default function GeriCareAIPage() {
             {recentExits.map((exit, idx) => (
               <div
                 key={idx}
-                className={`px-3 py-3 rounded-lg border mb-2 ${
-                  exit.severity === 'warning'
-                    ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30'
-                    : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-70'
-                }`}
+                className={`px-3 py-3 rounded-lg border mb-2 ${exit.severity === 'warning'
+                  ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30'
+                  : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700 opacity-70'
+                  }`}
               >
                 <div className="flex justify-between items-start mb-1">
                   <span
-                    className={`text-xs font-bold ${
-                      exit.severity === 'warning'
-                        ? 'text-orange-700 dark:text-orange-400'
-                        : 'text-slate-700 dark:text-slate-300'
-                    }`}
+                    className={`text-xs font-bold ${exit.severity === 'warning'
+                      ? 'text-orange-700 dark:text-orange-400'
+                      : 'text-slate-700 dark:text-slate-300'
+                      }`}
                   >
                     Room {exit.roomNumber}
                   </span>
                   <span
-                    className={`text-[10px] ${
-                      exit.severity === 'warning' ? 'text-orange-600/70' : 'text-slate-500'
-                    }`}
+                    className={`text-[10px] ${exit.severity === 'warning' ? 'text-orange-600/70' : 'text-slate-500'
+                      }`}
                   >
                     {exit.timeAgo}
                   </span>
                 </div>
                 <p
-                  className={`text-xs ${
-                    exit.severity === 'warning'
-                      ? 'text-orange-800 dark:text-orange-300'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`text-xs ${exit.severity === 'warning'
+                    ? 'text-orange-800 dark:text-orange-300'
+                    : 'text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   {exit.patientName}: {exit.description}
                 </p>
@@ -237,49 +249,108 @@ export default function GeriCareAIPage() {
 
         {/* Main Dashboard Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-6">
-          {/* CRITICAL ALERT PANEL */}
-          {showCriticalAlert && (
-            <section className="mb-8">
-              <div className="shadow-[0_0_20px_rgba(220,38,38,0.4)] relative overflow-hidden flex flex-col md:flex-row items-center gap-6 rounded-2xl bg-white dark:bg-slate-900 border-2 border-red-600 p-6 ring-4 ring-red-500/10">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white">
-                  <AlertTriangle className="w-12 h-12 animate-bounce" />
+
+          {/* Live AI Feed View */}
+          {currentView === 'live_feed' && (
+            <div className="flex flex-col gap-6 h-full">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Live AI Camera Feed</h2>
+                  <p className="text-slate-500">Real-time processing with YOLOv8 Fall Detection</p>
                 </div>
-                <div className="flex-1 text-center md:text-left">
-                  <div className="flex flex-wrap items-center gap-3 mb-1 justify-center md:justify-start">
-                    <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-widest">
-                      CRITICAL ALERT
-                    </span>
-                    <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                      DETECTED 45s AGO
-                    </span>
-                  </div>
-                  <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">
-                    FALL DETECTED: ROOM 302
-                  </h2>
-                  <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
-                    Martha Jenkins <span className="text-slate-400 mx-2">|</span> High Fall Risk Profile{' '}
-                    <span className="text-slate-400 mx-2">|</span> Motion Sensor A2
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                  <button className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
-                    <Phone className="w-5 h-5" />
-                    Verify & Call
-                  </button>
-                  <button
-                    onClick={() => setShowCriticalAlert(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-6 py-4 text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    Dismiss
-                  </button>
+                <div className="flex items-center gap-2 px-3 py-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm font-bold">
+                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                  LIVE
                 </div>
               </div>
-            </section>
+
+              <div className="relative aspect-video w-full max-w-4xl mx-auto bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+                <img
+                  src="http://localhost:5000/video_feed"
+                  alt="Live Fall Detection Feed"
+                  className="w-full h-full object-contain"
+                />
+
+                {/* Overlay Info */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <div className="px-2 py-1 bg-black/50 backdrop-blur-sm rounded text-xs font-mono text-green-400 border border-green-500/30">
+                    System: ONLINE
+                  </div>
+                  <div className="px-2 py-1 bg-black/50 backdrop-blur-sm rounded text-xs font-mono text-blue-400 border border-blue-500/30">
+                    Model: YOLOv8
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Detection Status</h3>
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                    <Activity className="w-5 h-5" />
+                    <span className="font-medium">Active Monitoring</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Camera Source</h3>
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <Radio className="w-5 h-5" />
+                    <span className="font-medium">USB Webcam / Local</span>
+                  </div>
+                </div>
+                <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Frame Rate</h3>
+                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                    <Clock className="w-5 h-5" />
+                    <span className="font-medium">~30 FPS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Dashboard View */}
           {currentView === 'dashboard' && (
             <>
+              {/* CRITICAL ALERT PANEL */}
+              {showCriticalAlert && (
+                <section className="mb-8">
+                  <div className="shadow-[0_0_20px_rgba(220,38,38,0.4)] relative overflow-hidden flex flex-col md:flex-row items-center gap-6 rounded-2xl bg-white dark:bg-slate-900 border-2 border-red-600 p-6 ring-4 ring-red-500/10">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white">
+                      <AlertTriangle className="w-12 h-12 animate-bounce" />
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                      <div className="flex flex-wrap items-center gap-3 mb-1 justify-center md:justify-start">
+                        <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-widest">
+                          CRITICAL ALERT
+                        </span>
+                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                          DETECTED 45s AGO
+                        </span>
+                      </div>
+                      <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-none mb-2">
+                        FALL DETECTED: ROOM 302
+                      </h2>
+                      <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
+                        Martha Jenkins <span className="text-slate-400 mx-2">|</span> High Fall Risk Profile{' '}
+                        <span className="text-slate-400 mx-2">|</span> Motion Sensor A2
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                      <button className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
+                        <Phone className="w-5 h-5" />
+                        Verify & Call
+                      </button>
+                      <button
+                        onClick={() => setShowCriticalAlert(false)}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-slate-100 dark:bg-slate-800 px-6 py-4 text-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Room Grid */}
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
@@ -398,11 +469,10 @@ function SidebarButton({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-        active
+      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${active
           ? 'bg-blue-600/10 text-blue-600'
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-      }`}
+        }`}
     >
       {icon}
       {label}
@@ -431,20 +501,18 @@ function SensorStatusView() {
         {sensors.map((sensor) => (
           <div
             key={sensor.id}
-            className={`bg-white dark:bg-slate-900 rounded-xl p-5 border-2 ${
-              sensor.status === 'online'
+            className={`bg-white dark:bg-slate-900 rounded-xl p-5 border-2 ${sensor.status === 'online'
                 ? 'border-green-200 dark:border-green-900/30'
                 : 'border-red-200 dark:border-red-900/30'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    sensor.status === 'online'
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${sensor.status === 'online'
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-600'
                       : 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                  }`}
+                    }`}
                 >
                   <Radio className="w-5 h-5" />
                 </div>
@@ -454,11 +522,10 @@ function SensorStatusView() {
                 </div>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  sensor.status === 'online'
+                className={`px-3 py-1 rounded-full text-xs font-bold ${sensor.status === 'online'
                     ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                     : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                }`}
+                  }`}
               >
                 {sensor.status.toUpperCase()}
               </span>
@@ -472,13 +539,12 @@ function SensorStatusView() {
                 </div>
                 <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${
-                      sensor.battery > 50
+                    className={`h-full ${sensor.battery > 50
                         ? 'bg-green-500'
                         : sensor.battery > 20
-                        ? 'bg-orange-500'
-                        : 'bg-red-500'
-                    }`}
+                          ? 'bg-orange-500'
+                          : 'bg-red-500'
+                      }`}
                     style={{ width: `${sensor.battery}%` }}
                   ></div>
                 </div>
@@ -663,11 +729,10 @@ function RoomCard({ room }: { room: RoomData }) {
 
   return (
     <div
-      className={`rounded-xl border bg-white dark:bg-slate-900 p-4 shadow-sm transition-shadow ${
-        isCritical
-          ? 'border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.3)]'
-          : 'border-slate-200 dark:border-slate-800 hover:shadow-md'
-      }`}
+      className={`rounded-xl border bg-white dark:bg-slate-900 p-4 shadow-sm transition-shadow ${isCritical
+        ? 'border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.3)]'
+        : 'border-slate-200 dark:border-slate-800 hover:shadow-md'
+        }`}
     >
       <div className="flex justify-between items-start mb-3">
         <div>
@@ -698,9 +763,8 @@ function RoomCard({ room }: { room: RoomData }) {
 
       <div className="flex items-center justify-between">
         <p
-          className={`text-xs font-medium ${
-            isCritical ? 'text-red-600 font-bold' : 'text-slate-500 italic'
-          }`}
+          className={`text-xs font-medium ${isCritical ? 'text-red-600 font-bold' : 'text-slate-500 italic'
+            }`}
         >
           {activityConfig[room.activityState].label}
         </p>

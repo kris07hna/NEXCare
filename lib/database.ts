@@ -70,13 +70,28 @@ export class EdgeCareDatabase {
     this.initialized = true;
   }
 
+  /**
+   * Get database connection status
+   */
+  getStatus(): { connected: boolean; type: string } {
+    return {
+      connected: this.initialized && this.supabase !== null,
+      type: this.initialized ? 'supabase' : 'none'
+    };
+  }
+
+  async execute(query: string, params?: any[]): Promise<void> {
+    // Stub method - raw SQL execution would require RPC or direct database access
+    console.warn('execute() is a stub - implement with Supabase RPC if needed');
+  }
+
   // ==================================================
   // PATIENTS
   // ==================================================
 
   async createPatient(patient: Partial<Patient>): Promise<Patient> {
     await this.initialize();
-    
+
     const { data, error } = await this.supabase!
       .from('patients')
       .insert([{
@@ -98,7 +113,7 @@ export class EdgeCareDatabase {
 
   async getPatients(filters?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<Patient[]> {
     await this.initialize();
-    
+
     let query = this.supabase!.from('patients').select('*');
 
     if (filters?.status) {
@@ -107,7 +122,7 @@ export class EdgeCareDatabase {
     if (filters?.search) {
       query = query.ilike('full_name', `%${filters.search}%`);
     }
-    
+
     query = query
       .order('created_at', { ascending: false })
       .limit(filters?.limit || 100)
@@ -120,7 +135,7 @@ export class EdgeCareDatabase {
 
   async getPatientById(id: string): Promise<Patient | null> {
     await this.initialize();
-    
+
     const { data, error } = await this.supabase!
       .from('patients')
       .select('*')
@@ -131,13 +146,39 @@ export class EdgeCareDatabase {
     return data;
   }
 
+  async updatePatient(id: string, updates: Partial<Patient>): Promise<Patient> {
+    await this.initialize();
+
+    const { data, error } = await this.supabase!
+      .from('patients')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deletePatient(id: string): Promise<boolean> {
+    await this.initialize();
+
+    // Soft delete by setting status to 'inactive'
+    const { error } = await this.supabase!
+      .from('patients')
+      .update({ status: 'inactive' })
+      .eq('id', id);
+
+    return !error;
+  }
+
   // ==================================================
   // AI REPORTS (Real-time from edge nodes)
   // ==================================================
 
   async createReport(report: Partial<AIReport>): Promise<AIReport> {
     await this.initialize();
-    
+
     const { data, error } = await this.supabase!
       .from('ai_reports')
       .insert([{
@@ -167,7 +208,7 @@ export class EdgeCareDatabase {
     offset?: number;
   }): Promise<{ reports: AIReport[]; total: number }> {
     await this.initialize();
-    
+
     let query = this.supabase!.from('ai_reports').select('*', { count: 'exact' });
 
     if (filters?.roomId) query = query.eq('room_id', filters.roomId);
@@ -181,7 +222,7 @@ export class EdgeCareDatabase {
       .range(filters?.offset || 0, (filters?.offset || 0) + (filters?.limit || 50) - 1);
 
     const { data, error, count } = await query;
-    
+
     if (error) throw error;
     return { reports: data || [], total: count || 0 };
   }
@@ -192,9 +233,9 @@ export class EdgeCareDatabase {
 
   async createConsultation(consultation: Partial<Consultation>): Promise<Consultation> {
     await this.initialize();
-    
+
     const jitsiRoomUrl = `https://meet.jit.si/nexcare-${consultation.room_id}-${Date.now()}`;
-    
+
     const { data, error } = await this.supabase!
       .from('consultations')
       .insert([{
@@ -221,7 +262,7 @@ export class EdgeCareDatabase {
     limit?: number;
   }): Promise<Consultation[]> {
     await this.initialize();
-    
+
     let query = this.supabase!.from('consultations').select('*');
 
     if (filters?.roomId) query = query.eq('room_id', filters.roomId);
@@ -237,19 +278,61 @@ export class EdgeCareDatabase {
     return data || [];
   }
 
-  async endConsultation(consultationId: string, notes?: string): Promise<void> {
+  async getConsultationById(id: string): Promise<Consultation | null> {
     await this.initialize();
-    
-    const { error } = await this.supabase!
+
+    const { data, error } = await this.supabase!
+      .from('consultations')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  async endConsultation(consultationId: string, notes?: string): Promise<Consultation> {
+    await this.initialize();
+
+    const { data, error } = await this.supabase!
       .from('consultations')
       .update({
         end_time: new Date().toISOString(),
         status: 'completed',
         notes: notes
       })
-      .eq('id', consultationId);
+      .eq('id', consultationId)
+      .select()
+      .single();
 
     if (error) throw error;
+    return data;
+  }
+
+  // ==================================================
+  // WEB RTC SIGNALING (Stub methods)
+  // ==================================================
+
+  async getPendingSignals(peerId: string): Promise<any[]> {
+    // Stub method - implement when WebRTC signaling table is added to Supabase
+    return [];
+  }
+
+  async deleteSignal(signalId: string): Promise<void> {
+    // Stub method - implement when WebRTC signaling table is added to Supabase
+  }
+
+  async storeSignal(signal: any): Promise<void> {
+    // Stub method - implement when WebRTC signaling table is added to Supabase
+  }
+
+  async markSignalDelivered(signalId: string): Promise<void> {
+    // Stub method - implement when WebRTC signaling table is added to Supabase
+  }
+
+  async createSignal(signal: any): Promise<any> {
+    // Stub method - implement when WebRTC signaling table is added to Supabase
+    return { ...signal, id: Date.now().toString() };
   }
 
   // ==================================================
@@ -258,7 +341,7 @@ export class EdgeCareDatabase {
 
   subscribeToReports(roomId: string, callback: (report: AIReport) => void) {
     if (!this.supabase) throw new Error('Database not initialized');
-    
+
     return this.supabase
       .channel(`room-${roomId}`)
       .on(
@@ -276,7 +359,7 @@ export class EdgeCareDatabase {
 
   subscribeToAllReports(callback: (report: AIReport) => void) {
     if (!this.supabase) throw new Error('Database not initialized');
-    
+
     return this.supabase
       .channel('all-reports')
       .on(

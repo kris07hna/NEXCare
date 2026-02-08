@@ -5,11 +5,19 @@
 
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useWebRTC } from '@/hooks/useWebRTC';
-import type { ConsultationSession } from '@/drizzle/schema';
 import { Video, Mic, MicOff, VideoOff, PhoneOff } from 'lucide-react';
+
+interface ConsultationSession {
+  id: string;
+  session_id: string;
+  room_id: string;
+  patient_id?: string;
+  roomId?: string;
+  [key: string]: any;
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,8 +25,8 @@ interface PageProps {
 
 export default function RoomCallPage({ params }: PageProps) {
   const router = useRouter();
-  const resolvedParams = use(params);
-  const sessionId = resolvedParams.id;
+  const urlParams = useParams();
+  const sessionId = urlParams.id as string;
   const [consultation, setConsultation] = useState<ConsultationSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [roomPeerId, setRoomPeerId] = useState<string>('');
@@ -93,13 +101,12 @@ export default function RoomCallPage({ params }: PageProps) {
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <span>Session {sessionId}</span>
           <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-slate-800 text-slate-200">
-            <span className={`w-2 h-2 rounded-full ${
-              connectionState === 'connected'
-                ? 'bg-emerald-400'
-                : connectionState === 'connecting'
+            <span className={`w-2 h-2 rounded-full ${connectionState === 'connected'
+              ? 'bg-emerald-400'
+              : connectionState === 'connecting'
                 ? 'bg-amber-400'
                 : 'bg-red-500'
-            }`}></span>
+              }`}></span>
             {connectionState}
           </span>
         </div>
@@ -150,18 +157,16 @@ export default function RoomCallPage({ params }: PageProps) {
           <div className="flex gap-3">
             <button
               onClick={toggleAudio}
-              className={`flex-1 py-2 rounded-xl text-sm font-semibold ${
-                isAudioEnabled ? 'bg-slate-800' : 'bg-red-600'
-              }`}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold ${isAudioEnabled ? 'bg-slate-800' : 'bg-red-600'
+                }`}
             >
               {isAudioEnabled ? <Mic className="w-4 h-4 inline mr-2" /> : <MicOff className="w-4 h-4 inline mr-2" />}
               Audio
             </button>
             <button
               onClick={toggleVideo}
-              className={`flex-1 py-2 rounded-xl text-sm font-semibold ${
-                isVideoEnabled ? 'bg-slate-800' : 'bg-red-600'
-              }`}
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold ${isVideoEnabled ? 'bg-slate-800' : 'bg-red-600'
+                }`}
             >
               {isVideoEnabled ? <Video className="w-4 h-4 inline mr-2" /> : <VideoOff className="w-4 h-4 inline mr-2" />}
               Video

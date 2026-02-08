@@ -89,7 +89,7 @@ export async function seedDatabase(force: boolean = false) {
     for (const patientData of samplePatients) {
       try {
         const patient = await db.createPatient(patientData);
-        console.log(`[Seed] ✓ Created patient: ${patient.patientId} - ${patient.fullName}`);
+        console.log(`[Seed] ✓ Created patient: ${patient.patient_id} - ${patient.full_name}`);
       } catch (error) {
         console.error(`[Seed] ✗ Failed to create patient ${patientData.patient_id}:`, error);
       }

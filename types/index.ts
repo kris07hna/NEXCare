@@ -3,13 +3,14 @@
  * Shared types across the application
  */
 
-import type { Patient, AIReport, ConsultationSession } from '../drizzle/schema';
+import type { Patient, AIReport, Consultation } from '../lib/database';
 
 // ============================================================================
 // Database Types
 // ============================================================================
 
-export type { Patient, AIReport, ConsultationSession };
+export type { Patient, AIReport };
+export type ConsultationSession = Consultation;
 
 // ============================================================================
 // API Request/Response Types
@@ -97,7 +98,7 @@ export interface CreatePatientRequest {
   notes?: string;
 }
 
-export interface UpdatePatientRequest extends Partial<CreatePatientRequest> {}
+export interface UpdatePatientRequest extends Partial<CreatePatientRequest> { }
 
 // Consultations API
 export interface CreateConsultationRequest {

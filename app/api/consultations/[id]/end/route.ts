@@ -19,11 +19,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const consultation = await db.endConsultation(id, validatedData.notes);
 
-    console.log(`[API /consultations/${id}/end PATCH] ✓ Consultation ended: ${consultation.durationSeconds}s`);
+    // Calculate duration in seconds
+    const durationSeconds = consultation.end_time && consultation.start_time
+      ? Math.floor((new Date(consultation.end_time).getTime() - new Date(consultation.start_time).getTime()) / 1000)
+      : 0;
+
+    console.log(`[API /consultations/${id}/end PATCH] ✓ Consultation ended: ${durationSeconds}s`);
 
     return NextResponse.json({
       success: true,
-      duration_seconds: consultation.durationSeconds,
+      duration_seconds: durationSeconds,
       consultation,
     });
   } catch (error) {

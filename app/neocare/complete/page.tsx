@@ -103,12 +103,12 @@ export default function CompleteNeoCareAIPage() {
 
         const infantsData: InfantData[] = neoRooms.map((room: RoomStatus) => {
           const patient = patientsData.patients.find((p: Patient) =>
-            p.roomId === room.roomId && p.status === 'active'
+            p.room_id === room.roomId && p.status === 'active'
           );
 
           // Count critical alerts for this room
           const roomReports = reportsData.reports.filter((r: AIReport) =>
-            r.roomId === room.roomId && r.alertLevel === 'critical'
+            r.room_id === room.roomId && r.alert_level === 'critical'
           );
 
           // Determine sleep state from AI status
@@ -403,11 +403,10 @@ function NavTab({ active, onClick, icon, label, badge }: any) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-colors ${
-        active
-          ? 'text-purple-600 border-purple-600'
-          : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-purple-600'
-      }`}
+      className={`flex items-center gap-2 text-sm font-semibold pb-1 border-b-2 transition-colors ${active
+        ? 'text-purple-600 border-purple-600'
+        : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-purple-600'
+        }`}
     >
       {icon}
       {label}

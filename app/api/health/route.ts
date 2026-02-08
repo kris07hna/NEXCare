@@ -24,7 +24,7 @@ export async function GET() {
       all_ips: ips,
       port: parseInt(process.env.PORT || '3000'),
       database: {
-        status: dbStatus.status,
+        status: dbStatus.connected ? 'connected' : 'disconnected',
         type: dbStatus.type,
       },
       ai_agents: {

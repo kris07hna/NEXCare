@@ -17,22 +17,22 @@ export async function POST(request: NextRequest) {
     const validatedData = createConsultationSchema.parse(body);
 
     const consultation = await db.createConsultation({
-      roomId: validatedData.room_id,
-      patientId: validatedData.patient_id,
-      doctorId: validatedData.doctor_id,
-      doctorName: validatedData.doctor_name,
-      startTime: new Date().toISOString(),
+      room_id: validatedData.room_id,
+      patient_id: validatedData.patient_id,
+      doctor_id: validatedData.doctor_id,
+      doctor_name: validatedData.doctor_name,
+      start_time: new Date().toISOString(),
       status: 'active',
     });
 
     console.log(
-      `[API /consultations POST] ✓ Consultation created: ${consultation.sessionId} - Room ${validatedData.room_id}`
+      `[API /consultations POST] ✓ Consultation created: ${consultation.session_id} - Room ${validatedData.room_id}`
     );
 
     return NextResponse.json(
       {
         success: true,
-        session_id: consultation.sessionId,
+        session_id: consultation.session_id,
         consultation,
       },
       { status: 201 }

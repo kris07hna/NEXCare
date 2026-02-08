@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     const patient = await db.createPatient(patientData);
 
-    console.log(`[API /patients POST] ✓ Patient created: ${patient.patientId} - ${patient.fullName}`);
+    console.log(`[API /patients POST] ✓ Patient created: ${patient.patient_id} - ${patient.full_name}`);
 
     return NextResponse.json(
       {

@@ -22,11 +22,11 @@ export async function GET() {
 
       // Get patient info if room has a patient
       const patients = await db.getPatients({ limit: 100 });
-      const patient = patients.find((p) => p.roomId === room.room_id && p.status === 'active');
+      const patient = patients.find((p) => p.room_id === room.room_id && p.status === 'active');
 
       if (patient) {
         patientId = patient.id;
-        patientName = patient.fullName;
+        patientName = patient.full_name;
       }
 
       roomStatuses.push({

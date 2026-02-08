@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const patient = await db.updatePatient(id, updateData);
 
-    console.log(`[API /patients/${id} PUT] ✓ Patient updated: ${patient.patientId}`);
+    console.log(`[API /patients/${id} PUT] ✓ Patient updated: ${patient.patient_id}`);
 
     return NextResponse.json({
       success: true,
