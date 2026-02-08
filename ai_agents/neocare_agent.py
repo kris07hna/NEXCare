@@ -135,11 +135,12 @@ def send_to_server(data):
     """Send data to central server"""
     try:
         response = requests.post(
-            f"{EDGE_SERVER_URL}/api/monitoring/update",
+            f"{EDGE_SERVER_URL}/api/reports",
             json=data,
             timeout=5
         )
-        if response.status_code == 200:
+        if response.status_code == 201:
+            print(f"[OK] Report sent: {data['status']} (conf: {data['confidence']:.2f})")
             return True
         else:
             print(f"[WARNING] Server returned {response.status_code}")
@@ -189,13 +190,20 @@ while True:
     current_time = time.time()
     if current_time - last_send_time >= 2:
         payload = {
-            "roomId": ROOM_ID,
-            "patientId": PATIENT_ID,
+            "room_id": ROOM_ID,
+            "patient_id": PATIENT_ID,
             "module": MODULE,
-            "timestamp": datetime.now().isoformat(),
-            "aiStatus": sleep_status,
+            "timestamp": int(datetime.now().timestamp()),
+            "status": sleep_status,
             "confidence": confidence,
-            "sensors": sensor_data
+            "alert_level": "normal",
+            "metadata": {
+                "temperature": sensor_data['temperature'],
+                "tempStatus": sensor_data['tempStatus'],
+                "lightStatus": sensor_data['lightStatus'],
+                "bpm": sensor_data['bpm'],
+                "sensorStatus": sensor_data['status']
+            }
         }
         
         if send_to_server(payload):
