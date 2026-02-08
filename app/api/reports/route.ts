@@ -19,20 +19,16 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validatedData = createReportSchema.parse(body);
 
-    // Convert arrays to JSON strings for storage
+    // Convert arrays to objects for storage
     const reportData = {
-      roomId: validatedData.room_id,
-      patientId: validatedData.patient_id,
+      room_id: validatedData.room_id,
+      patient_id: validatedData.patient_id,
       module: validatedData.module,
       status: validatedData.status,
       confidence: validatedData.confidence,
       timestamp: validatedData.timestamp,
-      predictions: validatedData.predictions ? JSON.stringify(validatedData.predictions) : undefined,
-      bbox: validatedData.bbox ? JSON.stringify(validatedData.bbox) : undefined,
-      alertLevel: validatedData.alert_level,
-      alertCount: validatedData.alert_count,
-      personIds: validatedData.person_ids ? JSON.stringify(validatedData.person_ids) : undefined,
-      metadata: validatedData.metadata ? JSON.stringify(validatedData.metadata) : undefined,
+      alert_level: validatedData.alert_level,
+      metadata: validatedData.metadata || {},
     };
 
     // Create report in database
@@ -55,8 +51,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        report_id: report.reportId,
-        created_at: report.createdAt,
+        report_id: report.report_id,
+        created_at: report.created_at,
       },
       { status: 201 }
     );

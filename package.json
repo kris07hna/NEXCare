@@ -10,17 +10,13 @@
     "start:local": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "seed:neocare": "tsx scripts/seed-neocare.ts",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "seed:neocare": "tsx scripts/seed-neocare.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.95.3",
-    "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "drizzle-orm": "^0.45.1",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
@@ -36,12 +32,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
-    "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

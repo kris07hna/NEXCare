@@ -65,6 +65,7 @@ export default function DashboardPage() {
     }
 
     try {
+      // Create consultation record in cloud database
       const response = await fetch('/api/consultations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +79,12 @@ export default function DashboardPage() {
 
       if (!response.ok) throw new Error('Failed to create consultation');
       const data = await response.json();
-      router.push(`/consultation/${data.consultation.id}`);
+      
+      // Open Jitsi video call in new window (no setup required!)
+      const jitsiUrl = `https://meet.jit.si/nexcare-5g-${roomId}`;
+      window.open(jitsiUrl, '_blank', 'width=1400,height=900');
+      
+      console.log('[5G MEC] Video call started:', jitsiUrl);
     } catch (err) {
       console.error('Failed to start consultation:', err);
       alert('Failed to start consultation. Please try again.');
