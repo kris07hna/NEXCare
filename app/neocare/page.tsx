@@ -91,7 +91,32 @@ export default function NeoCareAIPage() {
 
   const startMonitoring = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Check if mediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setLiveStatus('Error: Camera API not available. Use HTTPS or localhost.');
+        alert('Camera access requires HTTPS connection or localhost.\nCurrent URL: ' + window.location.href);
+        return;
+      }
+
+      // Check if any cameras are available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter(device => device.kind === 'videoinput');
+      
+      if (cameras.length === 0) {
+        setLiveStatus('Error: No camera detected on this device');
+        alert('No camera found!\n\nPlease check:\n1. Camera is connected\n2. Camera drivers are installed\n3. Camera is not disabled in Device Manager');
+        return;
+      }
+
+      console.log(`Found ${cameras.length} camera(s):`, cameras.map(c => c.label || 'Unknown Camera'));
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -103,9 +128,50 @@ export default function NeoCareAIPage() {
         // Store interval ID to clear later if needed (simple implementation for now)
         (window as any).monitorInterval = intervalId;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
-      setLiveStatus('Error: Camera Access Denied');
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Error: Camera Access Failed';
+      let alertMessage = 'Camera Error\n\n';
+
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMessage = 'Error: Camera Permission Denied';
+        alertMessage += 'You denied camera access!\n\nTo fix:\n1. Click the camera icon in browser address bar\n2. Allow camera access\n3. Refresh the page and try again';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMessage = 'Error: No Camera Found';
+        alertMessage += 'No camera detected!\n\nPlease check:\n1. Camera is connected\n2. Camera is enabled in Device Manager\n3. Close other apps using the camera';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMessage = 'Error: Camera Already in Use';
+        alertMessage += 'Camera is being used by another application!\n\nTo fix:\n1. Close other apps using camera (Zoom, Teams, etc.)\n2. Check if another browser tab is using camera\n3. Restart your browser';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = 'Error: Camera Not Compatible';
+        alertMessage += 'Your camera doesn\'t support the required settings.\n\nTrying with default settings...';
+        
+        // Retry with basic settings
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+            setIsMonitoring(true);
+            setLiveStatus('Camera Active (Basic Quality)');
+            const intervalId = setInterval(captureAndCheck, 1000);
+            (window as any).monitorInterval = intervalId;
+            return;
+          }
+        } catch (retryErr) {
+          console.error("Retry failed:", retryErr);
+        }
+      } else if (err.name === 'TypeError') {
+        errorMessage = 'Error: Browser Not Supported';
+        alertMessage += 'Your browser doesn\'t support camera access!\n\nPlease use:\n- Chrome 53+\n- Firefox 36+\n- Edge 12+\n- Safari 11+';
+      } else {
+        alertMessage += `Unknown error: ${err.message}\n\nTry:\n1. Refresh the page\n2. Restart your browser\n3. Check camera in Device Manager`;
+      }
+
+      setLiveStatus(errorMessage);
+      alert(alertMessage);
     }
   };
 

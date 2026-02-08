@@ -48,15 +48,6 @@ export async function POST(request: NextRequest) {
       latest_report: report,
     });
 
-    // Log to system
-    await db.createLog({
-      logLevel: validatedData.alert_level === 'critical' ? 'warning' : 'info',
-      component: 'ai-agent',
-      message: `Report received from ${validatedData.module}`,
-      details: JSON.stringify({ room_id: validatedData.room_id, status: validatedData.status }),
-      roomId: validatedData.room_id,
-    });
-
     console.log(
       `[API /reports POST] ✓ Report created: ${validatedData.module} - ${validatedData.room_id} - ${validatedData.status}`
     );

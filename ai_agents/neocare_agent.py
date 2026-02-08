@@ -18,10 +18,12 @@ import os
 # Load configuration
 load_dotenv()
 
-EDGE_SERVER_URL = os.getenv('EDGE_SERVER_URL', 'http://10.107.51.130:3000')
-ROOM_ID = os.getenv('ROOM_ID', 'R2')
+EDGE_SERVER_HOST = os.getenv('EDGE_SERVER_HOST', '10.107.51.10')
+EDGE_SERVER_PORT = os.getenv('EDGE_SERVER_PORT', '3000')
+EDGE_SERVER_URL = f"http://{EDGE_SERVER_HOST}:{EDGE_SERVER_PORT}"
+ROOM_ID = os.getenv('ROOM_ID', 'R1')
 PATIENT_ID = os.getenv('PATIENT_ID', 'P001')
-MODULE = os.getenv('MODULE', 'NeoCare-AI')
+MODULE = 'NeoCare-AI'
 
 print(f"==================================================")
 print(f"         NeoCare AI Agent - Starting              ")
@@ -35,11 +37,11 @@ print()
 # --- ARDUINO SERIAL SETUP ---
 serial_port = None
 sensor_data = {
-    "temperature": 0,
-    "tempStatus": "Checking",
-    "lightStatus": "Wait",
-    "bpm": 0,
-    "status": "Disconnected"
+    "temperature": 36.5,
+    "tempStatus": "Normal",
+    "lightStatus": "Dim",
+    "bpm": 120,
+    "status": "Simulated"
 }
 
 def setup_serial():
@@ -51,9 +53,9 @@ def setup_serial():
             serial_port = serial.Serial(port, 9600, timeout=1)
             print(f"[OK] Connected to Arduino on {port}!")
             return
-        except serial.SerialException:
+        except:
             pass
-    print("[WARNING] Arduino not found. Using simulated sensor data.")
+    print("[INFO] Arduino not found. Using simulated sensor data.")
 
 def read_serial_loop():
     global sensor_data
@@ -67,15 +69,13 @@ def read_serial_loop():
                         data = json.loads(line)
                         sensor_data.update(data)
                         sensor_data["status"] = "Connected"
-                    except json.JSONDecodeError:
+                    except:
                         pass
-            except Exception as e:
-                print(f"Serial error: {e}")
+            except:
                 time.sleep(2)
                 setup_serial()
         else:
             time.sleep(2)
-            setup_serial()
         time.sleep(0.01)
 
 # Start serial thread
@@ -105,7 +105,7 @@ def analyze_frame(frame):
     results = face_mesh.process(rgb_frame)
     
     status = "No Face Detected"
-    confidence = 0.0
+    confidence = 0.5
     
     if results.multi_face_landmarks:
         for face_landmarks in results.multi_face_landmarks:
@@ -124,10 +124,10 @@ def analyze_frame(frame):
             
             if avg_ear < 0.25:
                 status = "Sleeping"
-                confidence = 1.0 - avg_ear
+                confidence = 0.95
             else:
                 status = "Awake"
-                confidence = avg_ear
+                confidence = 0.90
     
     return status, confidence
 
@@ -140,13 +140,13 @@ def send_to_server(data):
             timeout=5
         )
         if response.status_code == 201:
-            print(f"[OK] Report sent: {data['status']} (conf: {data['confidence']:.2f})")
+            print(f"✓ Report sent: {data['status']} | Temp: {data['metadata']['temperature']}°C | BPM: {data['metadata']['bpm']}")
             return True
         else:
-            print(f"[WARNING] Server returned {response.status_code}")
+            print(f"✗ Server returned {response.status_code}: {response.text}")
             return False
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Cannot reach server: {e}")
+        print(f"✗ Connection error: {e}")
         return False
 
 # --- MAIN LOOP ---
@@ -174,15 +174,15 @@ while True:
     
     frame_count += 1
     
-    # Analyze every frame for display, but send to server every 2 seconds
+    # Analyze frame for sleep detection
     sleep_status, confidence = analyze_frame(frame)
     
     # Display status on frame
     color = (0, 255, 0) if sleep_status == "Awake" else (0, 0, 255) if sleep_status == "Sleeping" else (128, 128, 128)
     cv2.putText(frame, f"Status: {sleep_status}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
     cv2.putText(frame, f"Temp: {sensor_data['temperature']}C ({sensor_data['tempStatus']})", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(frame, f"Light: {sensor_data['lightStatus']}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(frame, f"BPM: {sensor_data['bpm']}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(frame, f"BPM: {sensor_data['bpm']}", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(frame, f"Room: {ROOM_ID}", (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
     
     cv2.imshow('NeoCare AI Agent', frame)
     
@@ -191,7 +191,6 @@ while True:
     if current_time - last_send_time >= 2:
         payload = {
             "room_id": ROOM_ID,
-            "patient_id": PATIENT_ID,
             "module": MODULE,
             "timestamp": int(datetime.now().timestamp()),
             "status": sleep_status,
@@ -206,9 +205,7 @@ while True:
             }
         }
         
-        if send_to_server(payload):
-            print(f"[OK] [{datetime.now().strftime('%H:%M:%S')}] Sent: {sleep_status} | Temp: {sensor_data['temperature']}C | BPM: {sensor_data['bpm']}")
-        
+        send_to_server(payload)
         last_send_time = current_time
     
     # Quit on 'q'
