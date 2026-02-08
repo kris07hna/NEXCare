@@ -1,12 +1,11 @@
 /**
  * EdgeCare-5G useRooms Hook
- * Real-time room updates via Supabase subscriptions + periodic refresh
+ * Polls Supabase every 5 seconds for latest AI reports
  */
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import type { RoomStatus } from '@/types';
 
 interface UseRoomsReturn {
@@ -16,7 +15,6 @@ interface UseRoomsReturn {
   onlineCount: number;
   offlineCount: number;
   refetch: () => Promise<void>;
-  isRealtimeConnected: boolean;
 }
 
 export function useRooms(pollInterval: number = 5000): UseRoomsReturn {
@@ -25,7 +23,6 @@ export function useRooms(pollInterval: number = 5000): UseRoomsReturn {
   const [error, setError] = useState<string | null>(null);
   const [onlineCount, setOnlineCount] = useState(0);
   const [offlineCount, setOfflineCount] = useState(0);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -49,48 +46,10 @@ export function useRooms(pollInterval: number = 5000): UseRoomsReturn {
     }
   }, []);
 
-  // Real-time subscription for instant updates
-  useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('[useRooms] Real-time disabled: Missing Supabase credentials');
-      return;
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Subscribe to ai_reports for instant room updates
-    const channel = supabase
-      .channel('room-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'ai_reports',
-        },
-        (payload) => {
-          console.log('[5G MEC Real-Time] 📡 New report received, refreshing rooms...');
-          fetchRooms(); // Refresh room data when new report comes in
-        }
-      )
-      .subscribe((status) => {
-        setIsRealtimeConnected(status === 'SUBSCRIBED');
-        if (status === 'SUBSCRIBED') {
-          console.log('[5G MEC Real-Time] ✓ Room updates subscription active');
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchRooms]);
-
-  // Periodic refresh as backup
+  // Poll every 5 seconds
   useEffect(() => {
     fetchRooms();
+    console.log(`[5G MEC] Polling Supabase every ${pollInterval / 1000}s for latest reports`);
     const interval = setInterval(fetchRooms, pollInterval);
     return () => clearInterval(interval);
   }, [fetchRooms, pollInterval]);
@@ -102,6 +61,5 @@ export function useRooms(pollInterval: number = 5000): UseRoomsReturn {
     onlineCount,
     offlineCount,
     refetch: fetchRooms,
-    isRealtimeConnected,
   };
 }

@@ -14,12 +14,12 @@ import {
   Activity, Users, Bed, Shield, Search, Bell, Settings,
   Sun, Moon, Grid3X3, MonitorCheck, UserCircle, BarChart3,
   Video, AlertCircle, Clock, TrendingUp, Eye, Baby, HeartPulse,
-  Calendar, Stethoscope, Server, FileDown, Radio, Wifi
+  Calendar, Stethoscope, Server, FileDown
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { rooms, loading, error, onlineCount, offlineCount, refetch, isRealtimeConnected } = useRooms(5000);
+  const { rooms, loading, error, onlineCount, offlineCount, refetch } = useRooms(5000);
   const [filterView, setFilterView] = useState<'all' | 'critical'>('all');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showDoctorMenu, setShowDoctorMenu] = useState(false);
@@ -189,23 +189,14 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Main Dashboard</h2>
               <div className="flex items-center gap-2 mt-1">
-                {isRealtimeConnected ? (
-                  <>
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    <p className="text-emerald-600 dark:text-emerald-400 text-sm font-semibold flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5" />
-                      Real-Time Active
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-1.5">
-                    <Wifi className="w-3.5 h-3.5" />
-                    Polling Mode
-                  </p>
-                )}
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                </span>
+                <p className="text-blue-600 dark:text-blue-400 text-sm font-semibold flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5" />
+                  Polling Supabase (5s)
+                </p>
               </div>
               <p className="text-slate-500 dark:text-slate-400 text-sm hidden">
                 System Health: <span className="text-emerald-500 font-medium">Optimal 5G Latency (2ms)</span>
